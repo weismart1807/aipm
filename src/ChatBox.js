@@ -18,7 +18,7 @@ function ChatBox() {
 
             // 避免太快輸出空白內容
             if (data) {
-                const summary = data.output + "\n有任何專案問題都可以問我喔🏌️";
+                const summary = data.output + "\n有任何專案問題都可以問我喔🏌️🥊";
                 setMessages([{ sender: "PM 專案摘要", text: summary }]);
             } else {
                 setMessages([{ sender: "PM 專案摘要", text: "目前沒有專案摘要" }]);
