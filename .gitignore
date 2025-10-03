@@ -1,0 +1,17 @@
+# 套件
+node_modules/
+
+# 編譯產物
+build/
+dist/
+.next/
+.cache/
+
+# 系統 & 開發工具垃圾
+.DS_Store
+.vscode/
+*.log
+
+# 環境設定
+.env
+.env.local
