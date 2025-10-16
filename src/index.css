@@ -61,6 +61,8 @@
   box-sizing: border-box;
   background: #ffffff;
   height: 90%;
+  padding-top: 20px;
+  padding-bottom: 20px;
 }
 
 /* ChatBox 專區 */
