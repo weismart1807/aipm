@@ -70,10 +70,10 @@ const ChatStyles = () => (
 }
 
 /* 專案摘要的特殊樣式 */
-.message-summary {
+.message-bubble.message-summary {
   background-color: #f8f9fa;
-  border: 1px solid #dee2e6;
-  color: #495057;
+  border: 1px solid #f0f0f0ff;
+  color: #afafafff;
   max-width: 100%;
   border-radius: 10px;
 }
@@ -147,12 +147,12 @@ function ChatBox() {
                 const data = await response.json();
                 if (data && data.output) {
                     const summary = data.output + "有任何專案問題都可以問我喔🏌️🥊";
-                    setMessages([{ sender: "PM 專案摘要", text: summary }]);
+                    setMessages([{ sender: "AI 專案摘要", text: summary }]);
                 } else {
-                    setMessages([{ sender: "PM 專案摘要", text: "目前沒有專案摘要" }]);
+                    setMessages([{ sender: "AI 專案摘要", text: "目前沒有專案摘要" }]);
                 }
             } catch (err) {
-                setMessages([{ sender: "PM 專案摘要", text: "（錯誤，無法取得專案摘要）" }]);
+                setMessages([{ sender: "AI 專案摘要", text: "（錯誤，無法取得專案摘要）" }]);
             }
         };
         fetchSummary();
@@ -216,7 +216,7 @@ function ChatBox() {
                 <div className="messages">
                     {messages.map((msg, i) => (
                         <div key={i} className={`message-container ${msg.sender === "我" ? "my-message" : "other-message"}`}>
-                            <div className={`message-bubble ${msg.sender === "PM 專案摘要" ? "message-summary" : ""}`}>
+                            <div className={`message-bubble ${msg.sender === "AI 專案摘要" ? "message-summary" : ""}`}>
                                 <strong>{msg.sender}：</strong>
                                 {msg.text}
                             </div>

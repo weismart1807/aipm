@@ -91,7 +91,7 @@ function Neo4jGraph() {
 
     const data = { nodes: new DataSet(nodes), edges: new DataSet(edges) };
     const options = {
-      nodes: { font: { size: 24, color: "#333" }, borderWidth: 1 },
+      nodes: { font: { size: 26, color: "#333" }, borderWidth: 1 },
       edges: {
         arrows: { to: { enabled: false } },
         font: { align: "middle", size: 12 },
@@ -104,9 +104,9 @@ function Neo4jGraph() {
         stabilization: { iterations: 200 },
         repulsion: {
           centralGravity: 0.02,
-          springLength: 150,
-          springConstant: 0.05,
-          nodeDistance: 100,
+          springLength: 250,
+          springConstant: 0.5,
+          nodeDistance: 150,
           damping: 0.09,
         },
       },
@@ -147,7 +147,12 @@ function Neo4jGraph() {
       <style>{componentStyles}</style>
       
       <div>
-        <h2 style={{ fontSize: "28px", textAlign: 'left', marginBottom: '20px' }}>專案關係圖</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+            <h2 style={{ fontSize: '28px', margin: 0 }}>專案關係圖</h2>
+            <p style={{ color: '#888', fontSize: '14px', margin: 0, fontStyle: 'italic' }}>
+                點擊節點以查看更詳細內容
+            </p>
+        </div>
         
         <div
           ref={containerRef}
