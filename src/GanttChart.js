@@ -1,16 +1,93 @@
 import React, { useEffect, useRef, useState } from "react";
-import { DataSet, Timeline } from "vis-timeline/standalone";
-import "vis-timeline/styles/vis-timeline-graph2d.min.css";
-import "./index.css";
+// import { DataSet, Timeline } from "vis-timeline/standalone"; // Removed - Will be loaded from CDN
+// import "vis-timeline/styles/vis-timeline-graph2d.min.css"; // Removed - Will be loaded from CDN
+// import "./index.css"; // Removed - Styles are self-contained
+
+// 新增的樣式元件，用於版面配置
+const GanttStyles = () => (
+    <style>{`
+    .gantt-page-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%; /* 填滿父層 (.content) 的高度 */
+      width: 100%;
+    }
+    .gantt-controls {
+      padding-bottom: 15px;
+      margin-bottom: 15px;
+      border-bottom: 1px solid #e0e0e0;
+      flex-shrink: 0; /* ✅ 確保控制區塊高度固定不被壓縮 */
+    }
+    .gantt-controls h2 {
+      font-size: 28px;
+      margin-top: 0;
+      margin-bottom: 0px;
+    }
+    /* ✅ 修改：這個 wrapper 現在負責捲動 */
+    .timeline-wrapper {
+      flex: 1;
+      overflow-y: auto; /* ✅ 修改：將捲動功能交給此容器，滾輪就會出現在右邊 */
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      position: relative; 
+    }
+    /* 覆蓋 vis-timeline 的預設尺寸計算 */
+    .vis-timeline {
+        border: none;
+        padding-left: 0 !important;
+    }
+    .timeline-container.fade-in {
+        opacity: 1;
+        transition: opacity 0.8s ease-in;
+    }
+    .timeline-container {
+        opacity: 0;
+        height: 100%; /* 確保此容器填滿其父層 wrapper */
+    }
+    `}</style>
+);
+
 
 function GanttChart() {
-  const ref = useRef();
+  const ref = useRef(null);
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [libraryLoaded, setLibraryLoaded] = useState(false); // 新增狀態來追蹤 CDN 函式庫是否載入
   const [visible, setVisible] = useState(false);
 
   const groupsRef = useRef(null);
   const timelineRef = useRef(null);
+
+  // ✅ 動態載入 CDN 資源
+  useEffect(() => {
+    if (window.vis) {
+      setLibraryLoaded(true);
+      return;
+    }
+
+    // 載入 CSS
+    const cssLink = document.createElement("link");
+    cssLink.rel = "stylesheet";
+    cssLink.href = "https://unpkg.com/vis-timeline@latest/styles/vis-timeline-graph2d.min.css";
+    document.head.appendChild(cssLink);
+    
+    // 載入 JS
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/vis-timeline@latest/standalone/umd/vis-timeline-graph2d.min.js";
+    script.onload = () => {
+      setLibraryLoaded(true);
+    };
+    script.onerror = () => {
+        console.error("無法載入 vis-timeline 函式庫");
+        setLoading(false);
+    }
+    document.body.appendChild(script);
+
+    return () => {
+        document.head.removeChild(cssLink);
+        document.body.removeChild(script);
+    }
+  }, []);
 
   useEffect(() => {
     fetch("https://wuca-n8n.zeabur.app/webhook/table")
@@ -26,7 +103,11 @@ function GanttChart() {
   }, []);
 
   useEffect(() => {
-    if (!rows.length || !ref.current) return;
+    // ✅ 確保函式庫已載入、資料已取得，且 ref 存在
+    if (!libraryLoaded || !rows.length || !ref.current) return;
+
+    // ✅ 從 window.vis 取得 DataSet 和 Timeline
+    const { DataSet, Timeline } = window.vis;
 
     const groups = new DataSet();
     const items = new DataSet();
@@ -145,12 +226,14 @@ function GanttChart() {
     const options = {
       stack: true,
       showCurrentTime: true,
-      orientation: "top",
+      orientation: {
+        axis: 'top'
+      },
       margin: { item: 10, axis: 20 },
       zoomKey: "ctrlKey",
-      verticalScroll: true,
-      maxHeight: "600px",
+      verticalScroll: true, // ✅ 修改：關閉內部滾輪
       editable: false,
+      // ✅ 移除 height: '100%'，讓甘特圖自然撐開高度
     };
 
     const timeline = new Timeline(ref.current, items, groups, options);
@@ -158,12 +241,14 @@ function GanttChart() {
     groupsRef.current = groups;
 
     setTimeout(() => setVisible(true), 50);
-    return () => timeline.destroy();
-  }, [rows]);
+    return () => {
+      if (timeline) {
+        timeline.destroy();
+      }
+    };
+  }, [rows, libraryLoaded]); // ✅ 將 libraryLoaded 加入依賴
 
-  if (loading) return <p>載入甘特圖...</p>;
-
-    const toggleGroups = (expand) => {
+  const toggleGroups = (expand) => {
     if (!groupsRef.current || !timelineRef.current) return;
 
     // 逐一更新每個 group
@@ -177,21 +262,42 @@ function GanttChart() {
 
     // 再呼叫一次刷新
     timelineRef.current.setGroups(groupsRef.current);
-    };
+  };
+  
+  // ✅ 修改載入中訊息
+  if (loading || !libraryLoaded) return <p>載入甘特圖資源中...</p>;
 
-
+  // 使用新的版面配置結構
   return (
-    <div>
-      <h2>專案甘特圖</h2>
-      <button onClick={() => toggleGroups(true)}>展開全部</button>
-      <button onClick={() => toggleGroups(false)}>收合全部</button>
-      <div
-        ref={ref}
-        className={`timeline-container ${visible ? "fade-in" : ""}`}
-        style={{ height: "600px", border: "1px solid #ccc", overflow: "auto" }}
-      />
-    </div>
+    <>
+      <GanttStyles />
+      <div className="gantt-page-container">
+        <div 
+            className="gantt-controls" 
+            style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '20px' // (可選) 加上一些和下方內容的間距
+            }}
+        >
+            <h2>專案甘特圖</h2>
+
+            {/* ✅ 按鈕直接放在這裡，不需要外層 div */}
+            <button onClick={() => toggleGroups(false)}>
+                全部收合
+            </button>
+        </div>
+        <div className="timeline-wrapper">
+            <div
+                ref={ref}
+                className={`timeline-container ${visible ? "fade-in" : ""}`}
+            />
+        </div>
+      </div>
+    </>
   );
 }
 
 export default GanttChart;
+

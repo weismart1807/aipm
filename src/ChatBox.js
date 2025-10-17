@@ -3,33 +3,14 @@ import React, { useState, useEffect, useRef } from "react";
 // 將 CSS 樣式直接整合到元件中，並根據您的需求進行美化
 const ChatStyles = () => (
     <style>{`
-/* 全局字體與盒模型設定 */
-body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-      sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    background-color: #f0f2f5;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    margin: 0;
-}
-
-/* ChatBox 專區 */
+/* ChatBox 專區 - 移除獨立樣式，使其能融入父層容器 */
 .chatbox {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  height: 75vh; /* 調整高度以獲得更好看的比例 */
-  width: 1036px; 
-  max-width: 95%;
-  background-color: #fff;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 100%;  /* 寬度設為 100% */
+  height: 100%; /* 高度設為 100% 以填滿 .content 區域 */
   overflow: hidden; /* 避免多出滾動條 */
+  background-color: #fff; /* 保留背景色 */
 }
 
 /* 對話紀錄區域（滾動） */
@@ -41,6 +22,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 15px; /* 訊息間的間距 */
+  border: 1px solid #ddd; /* 參考您提供的 messages 樣式 */
+  border-radius: 4px;
+  margin-bottom: 10px;
 }
 
 /* 訊息容器 (用於對齊) */
@@ -102,7 +86,7 @@ body {
     background-color: #f9f9f9;
 }
 
-.input-box textarea { /* 改為 textarea 以支援換行 */
+.input-box textarea {
     flex-grow: 1;
     border: 1px solid #ccc;
     border-radius: 20px;
