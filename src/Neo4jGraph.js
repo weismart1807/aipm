@@ -27,7 +27,7 @@ const componentStyles = `
   }
 `;
 
-function ProjectGraph() {
+function Neo4jGraph() {
   const containerRef = useRef(null);
   const modalRef = useRef(null); // ✅ 新增 modal 的 ref
   const [rows, setRows] = useState([]);
@@ -315,4 +315,4 @@ const GraphView = ({ content }) => {
   return <div ref={graphRef} style={{ width: "100%", height: "100%" }} />;
 };
 
-export default ProjectGraph;
+export default Neo4jGraph;
