@@ -146,7 +146,7 @@ function ChatBox() {
                 });
                 const data = await response.json();
                 if (data && data.output) {
-                    const summary = data.output + "有任何專案問題都可以問我喔🏌️🥊";
+                    const summary = data.output + "有任何專案問題都可以問我喔🏌️";
                     setMessages([{ sender: "AI 專案摘要", text: summary }]);
                 } else {
                     setMessages([{ sender: "AI 專案摘要", text: "目前沒有專案摘要" }]);
