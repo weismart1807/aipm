@@ -141,7 +141,7 @@ function ChatBox() {
 
         const fetchSummary = async () => {
             try {
-                const response = await fetch("https://wuca-n8n.zeabur.app/webhook/ab", {
+                const response = await fetch("https://wuca-n8n.zeabur.app/webhook/abX", {
                     method: "GET",
                 });
                 const data = await response.json();
