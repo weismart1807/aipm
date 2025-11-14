@@ -114,7 +114,18 @@ function GanttChart() {
     const projects = {};
     const today = new Date();
 
-    rows.forEach((row) => {
+    // ✅【修改 1】: 在這裡過濾掉無效的行 (沒有ID、名稱或日期的)
+    // 這樣可以防止無效資料汙染計算
+    const validRows = rows.filter(row => 
+      row.專案ID && 
+      row.專案名稱 && 
+      row.任務名稱 &&
+      row['開始日期'] && 
+      row['預計完成日期']
+    );
+
+    // ✅ 使用 validRows 進行後續處理
+    validRows.forEach((row) => {
       if (!projects[row.專案ID]) {
         projects[row.專案ID] = {
           專案名稱: row.專案名稱,
@@ -125,6 +136,13 @@ function GanttChart() {
     });
 
     Object.entries(projects).forEach(([projId, proj]) => {
+      
+      // ✅【修改 2】: 如果一個專案在過濾後沒有任何任務了，就跳過它
+      // 這可以防止顯示如截圖中 (0%) 旁邊的空白列
+      if (proj.tasks.length === 0) {
+        return; // 略過這個空白的專案群組
+      }
+
       const taskGroupIds = proj.tasks.map((_, i) => `${projId}-taskgroup-${i}`);
 
       // 父專案 group
@@ -300,4 +318,3 @@ function GanttChart() {
 }
 
 export default GanttChart;
-
