@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 // import "vis-timeline/styles/vis-timeline-graph2d.min.css"; // Removed - Will be loaded from CDN
 // import "./index.css"; // Removed - Styles are self-contained
 
-// 新增的樣式元件，用於版面配置
+// ... (GanttStyles 樣式元件 ... existing code ... )
 const GanttStyles = () => (
     <style>{`
     .gantt-page-container {
@@ -43,7 +43,7 @@ const GanttStyles = () => (
         height: 100%; 
     }
 
-    /* ✅ 修改：AI 分析結果的樣式 */
+    /* ✅ 新增：AI 分析結果的樣式 */
     .analysis-result-wrapper {
       flex-shrink: 0; /* 固定高度，不被壓縮 */
       background: #f9f9f9;
@@ -58,15 +58,15 @@ const GanttStyles = () => (
       font-size: 20px;
       color: #333;
     }
-    /* ✅ 修改：讓 LLM 的換行 (\n) 生效，並縮小字體 */
+    /* 讓 LLM 的換行 (\n) 生效 */
     .analysis-result-wrapper p {
       white-space: pre-wrap;
-      font-size: 14px; /* ⬅️ 字體已縮小 */
+      font-size: 14px;
       line-height: 1.6;
       color: #222;
     }
 
-    /* ✅ 新增：AI 分析按鈕的樣式 */
+    /* ✅ 新增：分析按鈕的樣式 */
     .analyze-btn {
         background: #007bff;
         color: white;
@@ -85,7 +85,7 @@ const GanttStyles = () => (
         background: #c0c0c0;
         cursor: not-allowed;
     }
-    
+
     /* ✅ 新增：關閉按鈕的樣式 */
     .analysis-close-btn {
       position: absolute;
@@ -109,6 +109,7 @@ const GanttStyles = () => (
 
 function GanttChart() {
   const ref = useRef(null);
+  // ... (useState definitions ... existing code ... )
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [libraryLoaded, setLibraryLoaded] = useState(false); 
@@ -120,16 +121,20 @@ function GanttChart() {
   const groupsRef = useRef(null);
   const timelineRef = useRef(null);
 
-  // ... (CDN 載入 useEffect ... 程式碼無變動)
+  // ... (useEffect for CDN loading ... existing code ... )
   useEffect(() => {
     if (window.vis) {
       setLibraryLoaded(true);
       return;
     }
+
+    // 載入 CSS
     const cssLink = document.createElement("link");
     cssLink.rel = "stylesheet";
     cssLink.href = "https://unpkg.com/vis-timeline@latest/styles/vis-timeline-graph2d.min.css";
     document.head.appendChild(cssLink);
+    
+    // 載入 JS
     const script = document.createElement("script");
     script.src = "https://unpkg.com/vis-timeline@latest/standalone/umd/vis-timeline-graph2d.min.js";
     script.onload = () => {
@@ -140,13 +145,14 @@ function GanttChart() {
         setLoading(false);
     }
     document.body.appendChild(script);
+
     return () => {
         document.head.removeChild(cssLink);
         document.body.removeChild(script);
     }
   }, []);
 
-  // ... (資料讀取 useEffect ... 程式碼無變動)
+  // ... (useEffect for data fetching ... existing code ... )
   useEffect(() => {
     fetch("https://wuca-n8n.zeabur.app/webhook/table")
       .then((res) => res.json())
@@ -160,37 +166,42 @@ function GanttChart() {
       });
   }, []);
 
-  // ... (handleAnalysis 函數 ... 程式碼無變動)
+  // ... (handleAnalysis function ... existing code ... )
   const handleAnalysis = async (projectName) => {
-    if (isAnalyzing) return; 
+    if (isAnalyzing) return; // 防止重複點擊
 
     console.log("開始分析專案:", projectName);
     setIsAnalyzing(true);
     setAnalysisResult(`分析中，請稍候... (正在分析: ${projectName})`);
-    setAnalysisError(""); 
+    setAnalysisError(""); // 清除上次的錯誤
 
     try {
-      const response = await fetch("https://wuca-n8n.zeabur.app/webhook/analyze-project", {
+      // ⚠️ 注意：請在 n8n 建立一個新的 Webhook，並將 URL 替換成你的
+      const response = await fetch("https://wuca-n8n.zeabur.app/webhook-test/analysis", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ projectName: projectName }), 
+          body: JSON.stringify({ projectName: projectName }), // 將專案名稱傳送給 n8n
       });
 
       if (!response.ok) {
         throw new Error(`伺服器錯誤: ${response.status}`);
       }
+
       const data = await response.json();
+
+      // 假設 n8n 回傳的 JSON 結構為 { "analysis_text": "..." }
       if (data.analysis_text) {
         setAnalysisResult(data.analysis_text);
       } else {
         throw new Error("回傳資料格式錯誤，找不到 analysis_text 欄位");
       }
+
     } catch (err) {
       console.error("分析失敗:", err);
       setAnalysisError(`分析失敗: ${err.message}`);
-      setAnalysisResult(""); 
+      setAnalysisResult(""); // 清除分析中訊息
     } finally {
-      setIsAnalyzing(false); 
+      setIsAnalyzing(false); // 解除鎖定
     }
   };
 
@@ -201,24 +212,26 @@ function GanttChart() {
     setAnalysisError("");
   };
 
-
   useEffect(() => {
-    // ... (useEffect 甘特圖主邏輯 ... 程式碼無變動)
     if (!libraryLoaded || !rows.length || !ref.current) return;
 
+    // ... (vis library loading ... existing code ... )
     const { DataSet, Timeline } = window.vis;
     const groups = new DataSet();
     const items = new DataSet();
     const projects = {};
     const today = new Date();
 
+    // ... (validRows filtering ... existing code ... )
     const validRows = rows.filter(row => 
+      row.專案ID && 
       row.專案名稱 && 
       row.任務名稱 &&
       row['開始日期'] && 
       row['預計完成日期']
     );
 
+    // ... (data grouping by '專案名稱' ... existing code ... )
     validRows.forEach((row) => {
       const groupKey = row.專案名稱; 
       if (!projects[groupKey]) {
@@ -228,18 +241,27 @@ function GanttChart() {
     });
 
     Object.entries(projects).forEach(([projKey, proj]) => {
+      // ... (empty project check ... existing code ... )
       if (proj.tasks.length === 0) {
         return; 
       }
+
       const taskGroupIds = proj.tasks.map((_, i) => `${projKey}-taskgroup-${i}`);
+
+      // ✅【修改 1】: 建立按鈕的 DOM 元素
       const buttonElement = document.createElement('button');
       buttonElement.className = 'analyze-btn';
+      // ✅【修改 2】: 使用 dataset 傳遞專案名稱，不需要編碼
       buttonElement.dataset.project = projKey; 
       buttonElement.innerText = 'AI 分析';
+
+      // 建立群組標題的 DOM 元素
       const textElement = document.createElement('div');
       textElement.style.textAlign = 'left';
       textElement.style.fontWeight = 'bold';
       textElement.innerText = projKey;
+
+      // 建立最外層的容器 (用 Flex)
       const groupElement = document.createElement('div');
       groupElement.style.display = 'flex';
       groupElement.style.justifyContent = 'space-between';
@@ -249,13 +271,16 @@ function GanttChart() {
       groupElement.appendChild(textElement);
       groupElement.appendChild(buttonElement);
 
+
+      // ✅【修改 3】: 父專案 group，content 直接傳入 DOM 元素
       groups.add({
         id: projKey, 
-        content: groupElement, 
+        content: groupElement, // ⬅️ 關鍵修改！
         nestedGroups: taskGroupIds,
         showNested: false, 
       });
 
+      // ... (總進度 ... 程式碼無變動)
       const totalProgress =
         proj.tasks.reduce((sum, t) => sum + Number(t["進度百分比"] || 0), 0) /
         proj.tasks.length;
@@ -287,10 +312,11 @@ function GanttChart() {
         `,
       });
 
+      // ... (子任務 ... 程式碼無變動)
       proj.tasks.forEach((task, idx) => {
         const start = new Date(task["開始日期"]);
         const end = new Date(task["預計完成日期"]);
-        const actualProgress = Number(task["進D度百分比"] || 0);
+        const actualProgress = Number(task["進度百分比"] || 0);
         const progressPercent = Math.round(actualProgress * 100);
 
         let gradientStyle;
@@ -338,6 +364,7 @@ function GanttChart() {
       });
     });
 
+    // ... (options 和 timeline 建立 ... 程式碼無變動)
     const options = {
       stack: true,
       showCurrentTime: true,
@@ -352,23 +379,35 @@ function GanttChart() {
     timelineRef.current = timeline;
     groupsRef.current = groups;
 
+    // ✅【修改 4】: 事件委派監聽器
     const onTimelineClick = (event) => {
         const target = event.target;
+        // 檢查是否點擊到 'analyze-btn'
         if (target.classList.contains('analyze-btn')) {
+            // 禁用按鈕防止重複點擊
             target.disabled = true;
             target.innerText = "分析中...";
+
+            // ✅【修改 5】: 直接從 dataset 讀取，不需解碼
             const projectName = target.dataset.project;
             if (projectName) {
                 handleAnalysis(projectName).finally(() => {
+                    // 分析完成後，無論成功失敗都恢復按鈕
                     target.disabled = false;
                     target.innerText = "AI 分析";
                 });
             }
         }
     };
+
+    // 將監聽器綁定在 timeline 的根元素上
     const timelineContainer = ref.current;
     timelineContainer.addEventListener('click', onTimelineClick);
+
+
     setTimeout(() => setVisible(true), 50);
+    
+    // ✅ 清理監聽器
     return () => {
       if (timeline) {
         timeline.destroy();
@@ -377,11 +416,12 @@ function GanttChart() {
         timelineContainer.removeEventListener('click', onTimelineClick);
       }
     };
-  }, [rows, libraryLoaded]); 
+  }, [rows, libraryLoaded]); // 移除了 isAnalyzing
 
-  // ... (toggleGroups 函數 ... 程式碼無變動)
+  // ... (toggleGroups function ... 程式碼無變動 ... )
   const toggleGroups = (expand) => {
     if (!groupsRef.current || !timelineRef.current) return;
+
     const allGroups = groupsRef.current.get();
     for (const g of allGroups) {
         if (g.nestedGroups) {
@@ -391,8 +431,10 @@ function GanttChart() {
     timelineRef.current.setGroups(groupsRef.current);
   };
   
+  // ... (loading state ... 程式碼無變動 ... )
   if (loading || !libraryLoaded) return <p>載入甘特圖資源中...</p>;
 
+  // ... (return JSX ... 程式碼無變動 ... )
   return (
     <>
       <GanttStyles />
@@ -418,7 +460,7 @@ function GanttChart() {
             />
         </div>
 
-        {/* ✅ 修改：分析結果顯示區域 */}
+        {/* ✅【修改 4】: 新增的分析結果顯示區域 */}
         {(isAnalyzing || analysisResult || analysisError) && (
           <div className="analysis-result-wrapper">
             {/* ✅ 新增：關閉按鈕 */}
