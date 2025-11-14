@@ -158,7 +158,7 @@ function GanttChart() {
 
     try {
       // ⚠️ 注意：請在 n8n 建立一個新的 Webhook，並將 URL 替換成你的
-      const response = await fetch("https://wuca-n8n.zeabur.app/webhook/analyze-project", {
+      const response = await fetch("https://wuca-n8n.zeabur.app/webhook/analysis", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ projectName: projectName }), // 將專案名稱傳送給 n8n
