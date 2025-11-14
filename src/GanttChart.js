@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 // import "vis-timeline/styles/vis-timeline-graph2d.min.css"; // Removed - Will be loaded from CDN
 // import "./index.css"; // Removed - Styles are self-contained
 
-// 新增的樣式元件，用於版面配置
+// ... (GanttStyles 樣式元件 ... existing code ... )
 const GanttStyles = () => (
     <style>{`
     .gantt-page-container {
@@ -50,6 +50,7 @@ const GanttStyles = () => (
 
 function GanttChart() {
   const ref = useRef(null);
+  // ... (useState definitions ... existing code ... )
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [libraryLoaded, setLibraryLoaded] = useState(false); // 新增狀態來追蹤 CDN 函式庫是否載入
@@ -58,7 +59,7 @@ function GanttChart() {
   const groupsRef = useRef(null);
   const timelineRef = useRef(null);
 
-  // ✅ 動態載入 CDN 資源
+  // ... (useEffect for CDN loading ... existing code ... )
   useEffect(() => {
     if (window.vis) {
       setLibraryLoaded(true);
@@ -89,6 +90,7 @@ function GanttChart() {
     }
   }, []);
 
+  // ... (useEffect for data fetching ... existing code ... )
   useEffect(() => {
     fetch("https://wuca-n8n.zeabur.app/webhook/table")
       .then((res) => res.json())
@@ -106,7 +108,7 @@ function GanttChart() {
     // ✅ 確保函式庫已載入、資料已取得，且 ref 存在
     if (!libraryLoaded || !rows.length || !ref.current) return;
 
-    // ✅ 從 window.vis 取得 DataSet 和 Timeline
+    // ... (vis library loading ... existing code ... )
     const { DataSet, Timeline } = window.vis;
 
     const groups = new DataSet();
@@ -117,25 +119,28 @@ function GanttChart() {
     // ✅【修改 1】: 在這裡過濾掉無效的行 (沒有ID、名稱或日期的)
     // 這樣可以防止無效資料汙染計算
     const validRows = rows.filter(row => 
-      row.專案ID && 
-      row.專案名稱 && 
+      row.專案ID && // 仍然保留 ID 檢查，確保它不是完全空的
+      row.專案名稱 && // ✅ 專案名稱現在是分組關鍵
       row.任務名稱 &&
       row['開始日期'] && 
       row['預計完成日期']
     );
 
-    // ✅ 使用 validRows 進行後續處理
+    // ✅【修改 2】: 使用 專案名稱 當作 key 來分組
     validRows.forEach((row) => {
-      if (!projects[row.專案ID]) {
-        projects[row.專案ID] = {
-          專案名稱: row.專案名稱,
+      const groupKey = row.專案名稱; // ⬅️ 關鍵修改！
+
+      if (!projects[groupKey]) {
+        projects[groupKey] = {
+          // 專案名稱: row.專案名稱, // Key 本身就是名稱了
           tasks: [],
         };
       }
-      projects[row.專案ID].tasks.push(row);
+      projects[groupKey].tasks.push(row);
     });
 
-    Object.entries(projects).forEach(([projId, proj]) => {
+    // ✅【修改 3】: 迭代時，key (projKey) 現在是 專案名稱
+    Object.entries(projects).forEach(([projKey, proj]) => {
       
       // ✅【修改 2】: 如果一個專案在過濾後沒有任何任務了，就跳過它
       // 這可以防止顯示如截圖中 (0%) 旁邊的空白列
@@ -143,12 +148,13 @@ function GanttChart() {
         return; // 略過這個空白的專案群組
       }
 
-      const taskGroupIds = proj.tasks.map((_, i) => `${projId}-taskgroup-${i}`);
+      // ✅ (修改) ID 現在使用 projKey (專案名稱)
+      const taskGroupIds = proj.tasks.map((_, i) => `${projKey}-taskgroup-${i}`);
 
       // 父專案 group
       groups.add({
-        id: projId,
-        content: `<div style="text-align:center;"><b>${proj.專案名稱}</b></div>`,
+        id: projKey, // ⬅️ 關鍵修改！
+        content: `<div style="text-align:center;"><b>${projKey}</b></div>`, // ⬅️ 關鍵修改！
         nestedGroups: taskGroupIds,
         showNested: false, // 預設收合
       });
@@ -158,6 +164,7 @@ function GanttChart() {
         proj.tasks.reduce((sum, t) => sum + Number(t["進度百分比"] || 0), 0) /
         proj.tasks.length;
 
+      // ... (minStart, maxEnd calculation ... existing code ... )
       const minStart = new Date(
         Math.min(...proj.tasks.map((t) => new Date(t["開始日期"])))
       );
@@ -168,9 +175,9 @@ function GanttChart() {
       const totalPercent = Math.round(totalProgress * 100);
 
       items.add({
-        id: `${projId}-summary`,
-        group: projId,
-        content: `<div style="text-align:center;">${proj.專案名稱} (${totalPercent}%)</div>`,
+        id: `${projKey}-summary`, // ⬅️ 關鍵修改！
+        group: projKey, // ⬅️ 關鍵修改！
+        content: `<div style="text-align:center;">${projKey} (${totalPercent}%)</div>`, // ⬅️ 關鍵修改！
         start: minStart,
         end: maxEnd,
         type: "range",
@@ -189,6 +196,7 @@ function GanttChart() {
 
       // 子任務
       proj.tasks.forEach((task, idx) => {
+        // ... (date, progress, style calculation ... existing code ... )
         const start = new Date(task["開始日期"]);
         const end = new Date(task["預計完成日期"]);
         const actualProgress = Number(task["進度百分比"] || 0);
@@ -223,15 +231,15 @@ function GanttChart() {
 
         // 子任務 group
         groups.add({
-          id: `${projId}-taskgroup-${idx}`,
+          id: `${projKey}-taskgroup-${idx}`, // ⬅️ 關鍵修改！
           content: `<div style="text-align:left;">${task["任務名稱"]}</div>`,
           style: "border:1px solid #666;font-size:14px; "
         });
 
         // 子任務 item
         items.add({
-          id: `${projId}-task-${idx}`,
-          group: `${projId}-taskgroup-${idx}`,
+          id: `${projKey}-task-${idx}`, // ⬅️ 關鍵修改！
+          group: `${projKey}-taskgroup-${idx}`, // ⬅️ 關鍵修改！
           content: `<div style="text-align:center;">${task["任務名稱"]} (${progressPercent}%)</div>`,
           start: start,
           end: end,
@@ -241,6 +249,7 @@ function GanttChart() {
       });
     });
 
+    // ... (options and timeline creation ... existing code ... )
     const options = {
       stack: true,
       showCurrentTime: true,
@@ -266,6 +275,7 @@ function GanttChart() {
     };
   }, [rows, libraryLoaded]); // ✅ 將 libraryLoaded 加入依賴
 
+  // ... (toggleGroups function ... existing code ... )
   const toggleGroups = (expand) => {
     if (!groupsRef.current || !timelineRef.current) return;
 
@@ -285,6 +295,7 @@ function GanttChart() {
   // ✅ 修改載入中訊息
   if (loading || !libraryLoaded) return <p>載入甘特圖資源中...</p>;
 
+  // ... (return statement with layout ... existing code ... )
   // 使用新的版面配置結構
   return (
     <>
