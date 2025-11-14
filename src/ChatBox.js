@@ -1,248 +1,445 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
+// import { DataSet, Timeline } from "vis-timeline/standalone"; // Removed - Will be loaded from CDN
+// import "vis-timeline/styles/vis-timeline-graph2d.min.css"; // Removed - Will be loaded from CDN
+// import "./index.css"; // Removed - Styles are self-contained
 
-// 將 CSS 樣式直接整合到元件中，並根據您的需求進行美化
-const ChatStyles = () => (
+// 新增的樣式元件，用於版面配置
+const GanttStyles = () => (
     <style>{`
-/* ChatBox 專區 - 移除獨立樣式，使其能融入父層容器 */
-.chatbox {
-  display: flex;
-  flex-direction: column;
-  width: 100%;  /* 寬度設為 100% */
-  height: 100%; /* 高度設為 100% 以填滿 .content 區域 */
-  overflow: hidden; /* 避免多出滾動條 */
-  background-color: #fff; /* 保留背景色 */
-}
+    .gantt-page-container {
+      display: flex;
+      flex-direction: column;
+      height: 100%; /* 填滿父層 (.content) 的高度 */
+      width: 100%;
+    }
+    .gantt-controls {
+      padding-bottom: 15px;
+      margin-bottom: 15px;
+      border-bottom: 1px solid #e0e0e0;
+      flex-shrink: 0; 
+    }
+    .gantt-controls h2 {
+      font-size: 28px;
+      margin-top: 0;
+      margin-bottom: 0px;
+    }
+    .timeline-wrapper {
+      flex: 1;
+      overflow-y: auto; 
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      position: relative; 
+    }
+    .vis-timeline {
+        border: none;
+        padding-left: 0 !important;
+    }
+    .timeline-container.fade-in {
+        opacity: 1;
+        transition: opacity 0.8s ease-in;
+    }
+    .timeline-container {
+        opacity: 0;
+        height: 100%; 
+    }
 
-/* 對話紀錄區域（滾動） */
-.messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px;
-  background: #ffffff;
-  display: flex;
-  flex-direction: column;
-  gap: 15px; /* 訊息間的間距 */
-  border: 1px solid #ddd; /* 參考您提供的 messages 樣式 */
-  border-radius: 4px;
-  margin-bottom: 10px;
-}
+    /* ✅ 新增：AI 分析結果的樣式 */
+    .analysis-result-wrapper {
+      flex-shrink: 0; /* 固定高度，不被壓縮 */
+      background: #f9f9f9;
+      border-top: 2px solid #e0e0e0;
+      padding: 20px;
+      margin-top: 20px;
+      border-radius: 4px;
+    }
+    .analysis-result-wrapper h3 {
+      margin-top: 0;
+      font-size: 20px;
+      color: #333;
+    }
+    /* 讓 LLM 的換行 (\n) 生效 */
+    .analysis-result-wrapper p {
+      white-space: pre-wrap;
+      font-size: 16px;
+      line-height: 1.6;
+      color: #222;
+    }
 
-/* 訊息容器 (用於對齊) */
-.message-container {
-    display: flex;
-    width: 100%;
-}
-
-.my-message {
-    justify-content: flex-end; /* 「我」的訊息靠右 */
-}
-
-.other-message {
-    justify-content: flex-start; /* 其他訊息靠左 */
-}
-
-/* 訊息泡泡 */
-.message-bubble {
-    max-width: 80%;
-    padding: 10px 15px;
-    border-radius: 18px;
-    line-height: 1.5;
-    word-wrap: break-word; /* 自動換行 */
-    white-space: pre-wrap; /* 保留換行符號 */
-}
-
-.my-message .message-bubble {
-    background-color: #c9e2fdff;
-    color: #333;
-    border-bottom-right-radius: 4px;
-}
-
-.other-message .message-bubble {
-    background-color: #e9e9eb;
-    color: #333;
-    border-bottom-left-radius: 4px;
-}
-
-.message-bubble strong {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: 600;
-}
-
-/* 專案摘要的特殊樣式 */
-.message-bubble.message-summary {
-  background-color: #f8f9fa;
-  border: 1px solid #f0f0f0ff;
-  color: #afafafff;
-  max-width: 100%;
-  border-radius: 10px;
-}
-
-/* 輸入框區域 */
-.input-box {
-    display: flex;
-    padding: 15px;
-    border-top: 1px solid #e0e0e0;
-    background-color: #f9f9f9;
-}
-
-.input-box textarea {
-    flex-grow: 1;
-    border: 1px solid #ccc;
-    border-radius: 20px;
-    padding: 10px 15px;
-    font-size: 1rem;
-    resize: none;
-    overflow-y: auto;
-    max-height: 100px;
-    line-height: 1.4;
-    margin-right: 10px;
-}
-
-.input-box textarea:focus {
-    outline: none;
-    border-color: #007bff;
-    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.2);
-}
-
-.input-box button {
-    padding: 10px 20px;
-    border: none;
-    background-color: #007bff;
-    color: white;
-    border-radius: 20px;
-    cursor: pointer;
-    font-size: 1rem;
-    font-weight: bold;
-    transition: background-color 0.2s;
-}
-
-.input-box button:hover {
-    background-color: #0056b3;
-}
+    /* ✅ 新增：分析按鈕的樣式 */
+    .analyze-btn {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        font-size: 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-left: 10px;
+        transition: background-color 0.2s;
+    }
+    .analyze-btn:hover {
+        background: #0056b3;
+    }
+    .analyze-btn:disabled {
+        background: #c0c0c0;
+        cursor: not-allowed;
+    }
     `}</style>
 );
 
 
-function ChatBox() {
-    const [messages, setMessages] = useState([]);
-    const [input, setInput] = useState("");
-    // ✅ 這是解決中文輸入問題的關鍵
-    const [isComposing, setIsComposing] = useState(false);
-    const messagesEndRef = useRef(null);
-    const textareaRef = useRef(null);
-    // ✅ 1. 新增一個 state 來儲存 Session ID
-    const [sessionId, setSessionId] = useState('');
+function GanttChart() {
+  const ref = useRef(null);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [libraryLoaded, setLibraryLoaded] = useState(false); 
+  const [visible, setVisible] = useState(false);
 
-    useEffect(() => {
-        // 直接產生一個全新的 ID，不要讀取 localStorage
-        const newSessionId = crypto.randomUUID();
-        setSessionId(newSessionId);
+  // ✅ 新增：AI 分析用的 State
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState("");
+  const [analysisError, setAnalysisError] = useState("");
 
-        const fetchSummary = async () => {
-            try {
-                const response = await fetch("https://wuca-n8n.zeabur.app/webhook/ab", {
-                    method: "GET",
-                });
-                const data = await response.json();
-                if (data && data.output) {
-                    const summary = data.output + "有任何專案問題都可以問我喔🏌️";
-                    setMessages([{ sender: "AI 專案摘要", text: summary }]);
-                } else {
-                    setMessages([{ sender: "AI 專案摘要", text: "目前沒有專案摘要" }]);
-                }
-            } catch (err) {
-                setMessages([{ sender: "AI 專案摘要", text: "（錯誤，無法取得專案摘要）" }]);
-            }
-        };
-        fetchSummary();
-    }, []);
+  const groupsRef = useRef(null);
+  const timelineRef = useRef(null);
 
-    const sendMessage = async () => {       
-        const trimmedInput = input.trim();
-        if (!trimmedInput) return;
+  // ... (useEffect for CDN loading ... 程式碼無變動 ... )
+  useEffect(() => {
+    if (window.vis) {
+      setLibraryLoaded(true);
+      return;
+    }
 
-        // ✅ 在這裡加入 console.log
-        console.log("正在發送的 Session ID:", sessionId);
-
-        // ✅ 使用函數式更新，確保狀態同步正確
-        setMessages(prevMessages => [...prevMessages, { sender: "我", text: trimmedInput }]);
-        setInput("");
-
-        try {
-            const response = await fetch("https://wuca-n8n.zeabur.app/webhook/chatbot", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: trimmedInput, sessionId: sessionId }),
-            });
-            const data = await response.json();
-            setMessages(prevMessages => [
-                ...prevMessages,
-                { sender: "PM 助手", text: data.output || "你的小幫手沒有聽清楚，可以在問一次嗎🤩" },
-            ]);
-        } catch (err) {
-            setMessages(prevMessages => [
-                ...prevMessages,
-                { sender: "PM 助手", text: "（錯誤，無法取得回覆）" },
-            ]);
-        }
-    };
-
-    const handleKeyDown = (e) => {
-        // ✅ 修正：判斷我們自己維護的 isComposing 狀態，而非 e.isComposing
-        if (e.key === 'Enter' && !e.shiftKey && !isComposing) {
-            e.preventDefault();
-            sendMessage();
-        }
-    };
-
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages]);
+    // 載入 CSS
+    const cssLink = document.createElement("link");
+    cssLink.rel = "stylesheet";
+    cssLink.href = "https://unpkg.com/vis-timeline@latest/styles/vis-timeline-graph2d.min.css";
+    document.head.appendChild(cssLink);
     
-    // 自動調整 textarea 高度
-    useEffect(() => {
-        const textarea = textareaRef.current;
-        if (textarea) {
-            textarea.style.height = 'auto';
-            textarea.style.height = `${textarea.scrollHeight}px`;
-        }
-    }, [input]);
+    // 載入 JS
+    const script = document.createElement("script");
+    script.src = "https://unpkg.com/vis-timeline@latest/standalone/umd/vis-timeline-graph2d.min.js";
+    script.onload = () => {
+      setLibraryLoaded(true);
+    };
+    script.onerror = () => {
+        console.error("無法載入 vis-timeline 函式庫");
+        setLoading(false);
+    }
+    document.body.appendChild(script);
 
-    return (
-        <>
-            <ChatStyles />
-            <div className="chatbox">
-                <div className="messages">
-                    {messages.map((msg, i) => (
-                        <div key={i} className={`message-container ${msg.sender === "我" ? "my-message" : "other-message"}`}>
-                            <div className={`message-bubble ${msg.sender === "AI 專案摘要" ? "message-summary" : ""}`}>
-                                <strong>{msg.sender}：</strong>
-                                {msg.text}
-                            </div>
-                        </div>
-                    ))}
-                    <div ref={messagesEndRef} />
-                </div>
+    return () => {
+        document.head.removeChild(cssLink);
+        document.body.removeChild(script);
+    }
+  }, []);
 
-                <div className="input-box">
-                    <textarea
-                        ref={textareaRef}
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        // ✅ 這兩個事件是修正中文輸入問題的核心
-                        onCompositionStart={() => setIsComposing(true)}
-                        onCompositionEnd={() => setIsComposing(false)}
-                        placeholder="輸入專案詢問，或新增、編輯、刪除專案任務 (Shift+Enter 換行)..."
-                        rows="1"
-                    />
-                    <button onClick={sendMessage}>送出</button>
-                </div>
-            </div>
-        </>
+  // ... (useEffect for data fetching ... 程式碼無變動 ... )
+  useEffect(() => {
+    fetch("https://wuca-n8n.zeabur.app/webhook/table")
+      .then((res) => res.json())
+      .then((data) => {
+        setRows(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("讀取錯誤", err);
+        setLoading(false);
+      });
+  }, []);
+
+  // ✅ 新增：呼叫 n8n 進行 AI 分析的函數
+  const handleAnalysis = async (projectName) => {
+    if (isAnalyzing) return; // 防止重複點擊
+
+    console.log("開始分析專案:", projectName);
+    setIsAnalyzing(true);
+    setAnalysisResult(`分析中，請稍候... (正在分析: ${projectName})`);
+    setAnalysisError(""); // 清除上次的錯誤
+
+    try {
+      // ⚠️ 注意：請在 n8n 建立一個新的 Webhook，並將 URL 替換成你的
+      const response = await fetch("https://wuca-n8n.zeabur.app/webhook/analyze-project", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ projectName: projectName }), // 將專案名稱傳送給 n8n
+      });
+
+      if (!response.ok) {
+        throw new Error(`伺服器錯誤: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // 假設 n8n 回傳的 JSON 結構為 { "analysis_text": "..." }
+      if (data.analysis_text) {
+        setAnalysisResult(data.analysis_text);
+      } else {
+        throw new Error("回傳資料格式錯誤，找不到 analysis_text 欄位");
+      }
+
+    } catch (err) {
+      console.error("分析失敗:", err);
+      setAnalysisError(`分析失敗: ${err.message}`);
+      setAnalysisResult(""); // 清除分析中訊息
+    } finally {
+      setIsAnalyzing(false); // 解除鎖定
+    }
+  };
+
+
+  useEffect(() => {
+    if (!libraryLoaded || !rows.length || !ref.current) return;
+
+    const { DataSet, Timeline } = window.vis;
+    const groups = new DataSet();
+    const items = new DataSet();
+    const projects = {};
+    const today = new Date();
+
+    const validRows = rows.filter(row => 
+      row.專案ID && 
+      row.專案名稱 && 
+      row.任務名稱 &&
+      row['開始日期'] && 
+      row['預計完成日期']
     );
+
+    validRows.forEach((row) => {
+      const groupKey = row.專案名稱; 
+      if (!projects[groupKey]) {
+        projects[groupKey] = { tasks: [] };
+      }
+      projects[groupKey].tasks.push(row);
+    });
+
+    Object.entries(projects).forEach(([projKey, proj]) => {
+      if (proj.tasks.length === 0) {
+        return; 
+      }
+
+      const taskGroupIds = proj.tasks.map((_, i) => `${projKey}-taskgroup-${i}`);
+
+      // ✅【修改 1】: 建立按鈕的 HTML
+      // data-project 屬性用於儲存專案名稱，以便點擊時抓取
+      // class="analyze-btn" 用於事件委派
+      // 我們用 encodeURIComponent 來確保專案名稱中的特殊字元 (如空白) 不會出錯
+      const encodedProjectName = encodeURIComponent(projKey);
+      const analyzeButton = `<button 
+                              class="analyze-btn" 
+                              data-project="${encodedProjectName}"
+                            >
+                              AI 分析
+                            </button>`;
+
+      // ✅【修改 2】: 父專案 group，將按鈕加入 content
+      groups.add({
+        id: projKey, 
+        // 使用 flex 讓名稱和按鈕並排
+        content: `<div style="display: flex; justify-content: space-between; align-items: center; padding-right: 10px;">
+                      <div style="text-align:left; font-weight:bold;">${projKey}</div>
+                      ${analyzeButton}
+                  </div>`, 
+        nestedGroups: taskGroupIds,
+        showNested: false, 
+      });
+
+      // ... (總進度 ... 程式碼無變動)
+      const totalProgress =
+        proj.tasks.reduce((sum, t) => sum + Number(t["進度百分比"] || 0), 0) /
+        proj.tasks.length;
+      const minStart = new Date(
+        Math.min(...proj.tasks.map((t) => new Date(t["開始日期"])))
+      );
+      const maxEnd = new Date(
+        Math.max(...proj.tasks.map((t) => new Date(t["預計完成日期"])))
+      );
+      const totalPercent = Math.round(totalProgress * 100);
+
+      items.add({
+        id: `${projKey}-summary`, 
+        group: projKey, 
+        content: `<div style="text-align:center;">${projKey} (${totalPercent}%)</div>`, 
+        start: minStart,
+        end: maxEnd,
+        type: "range",
+        style: `
+          background: linear-gradient(
+            to right,
+            rgba(200,198,198,0.9) ${totalPercent}%,
+            rgba(200,198,198,0.4) ${totalPercent}%
+          );
+          border:1px solid #666;
+          font-size:14px;
+          font-weight:bold;
+          width: 0 !important;
+        `,
+      });
+
+      // ... (子任務 ... 程式碼無變動)
+      proj.tasks.forEach((task, idx) => {
+        const start = new Date(task["開始日期"]);
+        const end = new Date(task["預計完成日期"]);
+        const actualProgress = Number(task["進度百分比"] || 0);
+        const progressPercent = Math.round(actualProgress * 100);
+
+        let gradientStyle;
+        if (progressPercent === 100) {
+          gradientStyle = `
+            background: linear-gradient(
+              to right,
+              rgba(0,200,0,0.7) ${progressPercent}%,
+              rgba(144,238,144,0.3) ${progressPercent}%
+            );
+          `;
+        } else if (end < today && progressPercent < 100) {
+          gradientStyle = `
+            background: linear-gradient(
+              to right,
+              rgba(255,99,71,0.6) ${progressPercent}%,
+              rgba(255,182,193,0.2) ${progressPercent}%
+            );
+          `;
+        } else {
+          gradientStyle = `
+            background: linear-gradient(
+              to right,
+              rgba(91,170,255,0.6) ${progressPercent}%,
+              rgba(0,123,255,0.15) ${progressPercent}%
+            );
+          `;
+        }
+
+        groups.add({
+          id: `${projKey}-taskgroup-${idx}`, 
+          content: `<div style="text-align:left;">${task["任務名稱"]}</div>`,
+          style: "border:1px solid #666;font-size:14px; "
+        });
+
+        items.add({
+          id: `${projKey}-task-${idx}`, 
+          group: `${projKey}-taskgroup-${idx}`, 
+          content: `<div style="text-align:center;">${task["任務名稱"]} (${progressPercent}%)</div>`,
+          start: start,
+          end: end,
+          type: "range",
+          style: gradientStyle + "border:1px solid #666;font-size:11px;"
+        });
+      });
+    });
+
+    const options = {
+      stack: true,
+      showCurrentTime: true,
+      orientation: { axis: 'top' },
+      margin: { item: 10, axis: 20 },
+      zoomKey: "ctrlKey",
+      verticalScroll: true, 
+      editable: false,
+    };
+
+    const timeline = new Timeline(ref.current, items, groups, options);
+    timelineRef.current = timeline;
+    groupsRef.current = groups;
+
+    // ✅【修改 3】: 建立事件委派，監聽按鈕點擊
+    // 這是因為按鈕是動態塞入 HTML 字串，無法直接用 onClick
+    const onTimelineClick = (event) => {
+        const target = event.target;
+        // 檢查是否點擊到 'analyze-btn'
+        if (target.classList.contains('analyze-btn')) {
+            // 禁用按鈕防止重複點擊
+            target.disabled = true;
+            target.innerText = "分析中...";
+
+            const encodedProjectName = target.getAttribute('data-project');
+            const projectName = decodeURIComponent(encodedProjectName); // 解碼回原始名稱
+            if (projectName) {
+                handleAnalysis(projectName).finally(() => {
+                    // 分析完成後，無論成功失敗都恢復按鈕
+                    target.disabled = false;
+                    target.innerText = "AI 分析";
+                });
+            }
+        }
+    };
+
+    // 將監聽器綁定在 timeline 的根元素上
+    const timelineContainer = ref.current;
+    timelineContainer.addEventListener('click', onTimelineClick);
+
+
+    setTimeout(() => setVisible(true), 50);
+    
+    // ✅ 清理監聽器
+    return () => {
+      if (timeline) {
+        timeline.destroy();
+      }
+      if (timelineContainer) {
+        timelineContainer.removeEventListener('click', onTimelineClick);
+      }
+    };
+  }, [rows, libraryLoaded, isAnalyzing]); // ✅ 將 isAnalyzing 加入依賴，確保 handleAnalysis 是最新
+  // ⬆️ 修正：移除 isAnalyzing 依賴，它會造成重複渲染，handleAnalysis 已經用 ref 了
+
+  // ... (toggleGroups function ... 程式碼無變動 ... )
+  const toggleGroups = (expand) => {
+    if (!groupsRef.current || !timelineRef.current) return;
+
+    const allGroups = groupsRef.current.get();
+    for (const g of allGroups) {
+        if (g.nestedGroups) {
+          groupsRef.current.update({ id: g.id, showNested: expand });
+        }
+    }
+    timelineRef.current.setGroups(groupsRef.current);
+  };
+  
+  if (loading || !libraryLoaded) return <p>載入甘特圖資源中...</p>;
+
+  return (
+    <>
+      <GanttStyles />
+      <div className="gantt-page-container">
+        <div 
+            className="gantt-controls" 
+            style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '20px' 
+            }}
+        >
+            <h2>專案甘特圖</h2>
+            <button onClick={() => toggleGroups(false)}>
+                全部收合
+            </button>
+        </div>
+        <div className="timeline-wrapper">
+            <div
+                ref={ref}
+                className={`timeline-container ${visible ? "fade-in" : ""}`}
+            />
+        </div>
+
+        {/* ✅【修改 4】: 新增的分析結果顯示區域 */}
+        {(isAnalyzing || analysisResult || analysisError) && (
+          <div className="analysis-result-wrapper">
+            <h3>專案 AI 分析</h3>
+            {isAnalyzing && <p>分析中，請稍候... (AI 正在讀取並總結專案數據)</p>}
+            
+            {/* 顯示 LLM 回傳的分析結果 */}
+            {analysisResult && <p>{analysisResult}</p>}
+
+            {/* 顯示錯誤訊息 */}
+            {analysisError && <p style={{ color: 'red' }}>{analysisError}</p>}
+          </div>
+        )}
+
+      </div>
+    </>
+  );
 }
 
-export default ChatBox;
-
+export default GanttChart;
