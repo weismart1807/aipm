@@ -68,7 +68,7 @@ const GanttStyles = () => (
 
     /* ✅ 新增：分析按鈕的樣式 */
     .analyze-btn {
-        background: #007bff;
+        background: #61adffff;
         color: white;
         border: none;
         padding: 4px 8px;
