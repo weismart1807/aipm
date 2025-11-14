@@ -120,6 +120,29 @@ const ChatStyles = () => (
 .input-box button:hover {
     background-color: #0056b3;
 }
+
+/* ✅ 新增：載入中 Spinner */
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 3px solid rgba(150, 150, 150, 0.2); /* 淺灰色底 */
+  border-top-color: #888; /* 轉動的顏色 (灰色) */
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 10px; /* 跟文字有點間距 */
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ✅ 新增：讓 spinner 和文字水平排列 */
+.loading-bubble {
+    display: flex;
+    align-items: center;
+    color: #555; /* 讓「思考中」的文字也是灰色 */
+}
     `}</style>
 );
 
@@ -127,15 +150,15 @@ const ChatStyles = () => (
 function ChatBox() {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
-    // ✅ 這是解決中文輸入問題的關鍵
     const [isComposing, setIsComposing] = useState(false);
     const messagesEndRef = useRef(null);
     const textareaRef = useRef(null);
-    // ✅ 1. 新增一個 state 來儲存 Session ID
     const [sessionId, setSessionId] = useState('');
+    
+    // ✅ 1. 新增載入狀態
+    const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
-        // 直接產生一個全新的 ID，不要讀取 localStorage
         const newSessionId = crypto.randomUUID();
         setSessionId(newSessionId);
 
@@ -160,14 +183,15 @@ function ChatBox() {
 
     const sendMessage = async () => {       
         const trimmedInput = input.trim();
-        if (!trimmedInput) return;
+        if (!trimmedInput || isLoading) return; // ✅ 如果正在載入中，禁止重複發送
 
-        // ✅ 在這裡加入 console.log
         console.log("正在發送的 Session ID:", sessionId);
 
-        // ✅ 使用函數式更新，確保狀態同步正確
         setMessages(prevMessages => [...prevMessages, { sender: "我", text: trimmedInput }]);
         setInput("");
+        
+        // ✅ 2. 開始載入
+        setIsLoading(true);
 
         try {
             const response = await fetch("https://wuca-n8n.zeabur.app/webhook/chatbot", {
@@ -176,11 +200,16 @@ function ChatBox() {
                 body: JSON.stringify({ message: trimmedInput, sessionId: sessionId }),
             });
             const data = await response.json();
+            
+            // ✅ 3. 停止載入
+            setIsLoading(false);
             setMessages(prevMessages => [
                 ...prevMessages,
                 { sender: "PM 助手", text: data.output || "你的小幫手沒有聽清楚，可以在問一次嗎🤩" },
             ]);
         } catch (err) {
+            // ✅ 3. 停止載入 (即使是錯誤)
+            setIsLoading(false);
             setMessages(prevMessages => [
                 ...prevMessages,
                 { sender: "PM 助手", text: "（錯誤，無法取得回覆）" },
@@ -189,7 +218,6 @@ function ChatBox() {
     };
 
     const handleKeyDown = (e) => {
-        // ✅ 修正：判斷我們自己維護的 isComposing 狀態，而非 e.isComposing
         if (e.key === 'Enter' && !e.shiftKey && !isComposing) {
             e.preventDefault();
             sendMessage();
@@ -198,9 +226,8 @@ function ChatBox() {
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages]);
+    }, [messages, isLoading]); // ✅ 當 isLoading 變化時也滾動
     
-    // 自動調整 textarea 高度
     useEffect(() => {
         const textarea = textareaRef.current;
         if (textarea) {
@@ -222,6 +249,19 @@ function ChatBox() {
                             </div>
                         </div>
                     ))}
+                    
+                    {/* ✅ 4. 顯示載入中動畫 */}
+                    {isLoading && (
+                        <div className="message-container other-message">
+                            <div className="message-bubble">
+                                <div className="loading-bubble">
+                                    <div className="spinner"></div>
+                                    <span>PM 助手 思考中...</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     <div ref={messagesEndRef} />
                 </div>
 
@@ -231,13 +271,15 @@ function ChatBox() {
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        // ✅ 這兩個事件是修正中文輸入問題的核心
                         onCompositionStart={() => setIsComposing(true)}
                         onCompositionEnd={() => setIsComposing(false)}
                         placeholder="輸入詢問專案細節，或新增、編輯、刪除專案任務 (Shift+Enter 換行)..."
                         rows="1"
+                        disabled={isLoading} // ✅ (可選) 載入中禁止輸入
                     />
-                    <button onClick={sendMessage}>送出</button>
+                    <button onClick={sendMessage} disabled={isLoading}>
+                        {isLoading ? "..." : "送出"} 
+                    </button>
                 </div>
             </div>
         </>
@@ -245,4 +287,3 @@ function ChatBox() {
 }
 
 export default ChatBox;
-
