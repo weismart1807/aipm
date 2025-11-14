@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 // import "vis-timeline/styles/vis-timeline-graph2d.min.css"; // Removed - Will be loaded from CDN
 // import "./index.css"; // Removed - Styles are self-contained
 
-// 新增的樣式元件，用於版面配置
+// ... (GanttStyles 樣式元件 ... existing code ... )
 const GanttStyles = () => (
     <style>{`
     .gantt-page-container {
@@ -90,12 +90,11 @@ const GanttStyles = () => (
 
 function GanttChart() {
   const ref = useRef(null);
+  // ... (useState definitions ... existing code ... )
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [libraryLoaded, setLibraryLoaded] = useState(false); 
   const [visible, setVisible] = useState(false);
-
-  // ✅ 新增：AI 分析用的 State
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState("");
   const [analysisError, setAnalysisError] = useState("");
@@ -103,7 +102,7 @@ function GanttChart() {
   const groupsRef = useRef(null);
   const timelineRef = useRef(null);
 
-  // ... (useEffect for CDN loading ... 程式碼無變動 ... )
+  // ... (useEffect for CDN loading ... existing code ... )
   useEffect(() => {
     if (window.vis) {
       setLibraryLoaded(true);
@@ -134,7 +133,7 @@ function GanttChart() {
     }
   }, []);
 
-  // ... (useEffect for data fetching ... 程式碼無變動 ... )
+  // ... (useEffect for data fetching ... existing code ... )
   useEffect(() => {
     fetch("https://wuca-n8n.zeabur.app/webhook/table")
       .then((res) => res.json())
@@ -148,7 +147,7 @@ function GanttChart() {
       });
   }, []);
 
-  // ✅ 新增：呼叫 n8n 進行 AI 分析的函數
+  // ... (handleAnalysis function ... existing code ... )
   const handleAnalysis = async (projectName) => {
     if (isAnalyzing) return; // 防止重複點擊
 
@@ -159,7 +158,7 @@ function GanttChart() {
 
     try {
       // ⚠️ 注意：請在 n8n 建立一個新的 Webhook，並將 URL 替換成你的
-      const response = await fetch("https://wuca-n8n.zeabur.app/webhook/analysis", {
+      const response = await fetch("https://wuca-n8n.zeabur.app/webhook/analyze-project", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ projectName: projectName }), // 將專案名稱傳送給 n8n
@@ -191,12 +190,14 @@ function GanttChart() {
   useEffect(() => {
     if (!libraryLoaded || !rows.length || !ref.current) return;
 
+    // ... (vis library loading ... existing code ... )
     const { DataSet, Timeline } = window.vis;
     const groups = new DataSet();
     const items = new DataSet();
     const projects = {};
     const today = new Date();
 
+    // ... (validRows filtering ... existing code ... )
     const validRows = rows.filter(row => 
       row.專案ID && 
       row.專案名稱 && 
@@ -205,6 +206,7 @@ function GanttChart() {
       row['預計完成日期']
     );
 
+    // ... (data grouping by '專案名稱' ... existing code ... )
     validRows.forEach((row) => {
       const groupKey = row.專案名稱; 
       if (!projects[groupKey]) {
@@ -214,32 +216,41 @@ function GanttChart() {
     });
 
     Object.entries(projects).forEach(([projKey, proj]) => {
+      // ... (empty project check ... existing code ... )
       if (proj.tasks.length === 0) {
         return; 
       }
 
       const taskGroupIds = proj.tasks.map((_, i) => `${projKey}-taskgroup-${i}`);
 
-      // ✅【修改 1】: 建立按鈕的 HTML
-      // data-project 屬性用於儲存專案名稱，以便點擊時抓取
-      // class="analyze-btn" 用於事件委派
-      // 我們用 encodeURIComponent 來確保專案名稱中的特殊字元 (如空白) 不會出錯
-      const encodedProjectName = encodeURIComponent(projKey);
-      const analyzeButton = `<button 
-                              class="analyze-btn" 
-                              data-project="${encodedProjectName}"
-                            >
-                              AI 分析
-                            </button>`;
+      // ✅【修改 1】: 建立按鈕的 DOM 元素
+      const buttonElement = document.createElement('button');
+      buttonElement.className = 'analyze-btn';
+      // ✅【修改 2】: 使用 dataset 傳遞專案名稱，不需要編碼
+      buttonElement.dataset.project = projKey; 
+      buttonElement.innerText = 'AI 分析';
 
-      // ✅【修改 2】: 父專案 group，將按鈕加入 content
+      // 建立群組標題的 DOM 元素
+      const textElement = document.createElement('div');
+      textElement.style.textAlign = 'left';
+      textElement.style.fontWeight = 'bold';
+      textElement.innerText = projKey;
+
+      // 建立最外層的容器 (用 Flex)
+      const groupElement = document.createElement('div');
+      groupElement.style.display = 'flex';
+      groupElement.style.justifyContent = 'space-between';
+      groupElement.style.alignItems = 'center';
+      groupElement.style.paddingRight = '10px';
+      
+      groupElement.appendChild(textElement);
+      groupElement.appendChild(buttonElement);
+
+
+      // ✅【修改 3】: 父專案 group，content 直接傳入 DOM 元素
       groups.add({
         id: projKey, 
-        // 使用 flex 讓名稱和按鈕並排
-        content: `<div style="display: flex; justify-content: space-between; align-items: center; padding-right: 10px;">
-                      <div style="text-align:left; font-weight:bold;">${projKey}</div>
-                      ${analyzeButton}
-                  </div>`, 
+        content: groupElement, // ⬅️ 關鍵修改！
         nestedGroups: taskGroupIds,
         showNested: false, 
       });
@@ -328,6 +339,7 @@ function GanttChart() {
       });
     });
 
+    // ... (options 和 timeline 建立 ... 程式碼無變動)
     const options = {
       stack: true,
       showCurrentTime: true,
@@ -342,8 +354,7 @@ function GanttChart() {
     timelineRef.current = timeline;
     groupsRef.current = groups;
 
-    // ✅【修改 3】: 建立事件委派，監聽按鈕點擊
-    // 這是因為按鈕是動態塞入 HTML 字串，無法直接用 onClick
+    // ✅【修改 4】: 事件委派監聽器
     const onTimelineClick = (event) => {
         const target = event.target;
         // 檢查是否點擊到 'analyze-btn'
@@ -352,8 +363,8 @@ function GanttChart() {
             target.disabled = true;
             target.innerText = "分析中...";
 
-            const encodedProjectName = target.getAttribute('data-project');
-            const projectName = decodeURIComponent(encodedProjectName); // 解碼回原始名稱
+            // ✅【修改 5】: 直接從 dataset 讀取，不需解碼
+            const projectName = target.dataset.project;
             if (projectName) {
                 handleAnalysis(projectName).finally(() => {
                     // 分析完成後，無論成功失敗都恢復按鈕
@@ -380,8 +391,7 @@ function GanttChart() {
         timelineContainer.removeEventListener('click', onTimelineClick);
       }
     };
-  }, [rows, libraryLoaded, isAnalyzing]); // ✅ 將 isAnalyzing 加入依賴，確保 handleAnalysis 是最新
-  // ⬆️ 修正：移除 isAnalyzing 依賴，它會造成重複渲染，handleAnalysis 已經用 ref 了
+  }, [rows, libraryLoaded]); // 移除了 isAnalyzing
 
   // ... (toggleGroups function ... 程式碼無變動 ... )
   const toggleGroups = (expand) => {
@@ -396,8 +406,10 @@ function GanttChart() {
     timelineRef.current.setGroups(groupsRef.current);
   };
   
+  // ... (loading state ... 程式碼無變動 ... )
   if (loading || !libraryLoaded) return <p>載入甘特圖資源中...</p>;
 
+  // ... (return JSX ... 程式碼無變動 ... )
   return (
     <>
       <GanttStyles />
