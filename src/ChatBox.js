@@ -234,7 +234,7 @@ function ChatBox() {
                         // ✅ 這兩個事件是修正中文輸入問題的核心
                         onCompositionStart={() => setIsComposing(true)}
                         onCompositionEnd={() => setIsComposing(false)}
-                        placeholder="輸入訊息 (Shift+Enter 換行)..."
+                        placeholder="輸入專案詢問，或新增、編輯、刪除專案任務 (Shift+Enter 換行)..."
                         rows="1"
                     />
                     <button onClick={sendMessage}>送出</button>
