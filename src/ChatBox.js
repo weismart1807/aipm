@@ -164,7 +164,7 @@ function ChatBox() {
 
         const fetchSummary = async () => {
             try {
-                const response = await fetch("https://wuca-n8n.zeabur.app/webhook-test/chatbot", {
+                const response = await fetch("https://wuca-n8n.zeabur.app/webhook/ab", {
                     method: "GET",
                 });
                 const data = await response.json();
@@ -194,7 +194,7 @@ function ChatBox() {
         setIsLoading(true);
 
         try {
-            const response = await fetch("https://wuca-n8n.zeabur.app/webhook/chatbot", {
+            const response = await fetch("https://wuca-n8n.zeabur.app/webhook-test/chatbot", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ message: trimmedInput, sessionId: sessionId }),
