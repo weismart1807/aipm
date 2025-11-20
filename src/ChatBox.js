@@ -194,10 +194,13 @@ function ChatBox() {
         // ✅ 2. 準備歷史紀錄 (History Context)
         // 取最後 6 則訊息，避免 Token 過多
         // 將前端的 sender 格式轉換為後端/LLM 看得懂的 role 格式
-        const historyPayload = messages.slice(-6).map(msg => ({
-            role: msg.sender === "我" ? "user" : "assistant",
-            content: msg.text
-        }));
+        const historyPayload = messages
+            .filter(msg => msg.sender !== "AI 專案摘要") // <--- 關鍵修改：排除摘要訊息
+            .slice(-6)
+            .map(msg => ({
+                role: msg.sender === "我" ? "user" : "assistant",
+                content: msg.text
+            }));
 
         try {
             const response = await fetch("https://wuca-n8n.zeabur.app/webhook/chatbot", {
