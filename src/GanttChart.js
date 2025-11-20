@@ -4,83 +4,45 @@ import React, { useEffect, useRef, useState } from "react";
 // import "./index.css"; 
 
 // ✅ 核心邏輯：進度標準化函數
-// 解決 0.4 -> 40%, 1 -> 100%, "30%" -> 30 的問題
 const normalizeProgress = (value) => {
     if (value === undefined || value === null || value === "") return 0;
-    
-    // 1. 先轉成字串並移除 %
     let str = String(value).replace('%', '');
-    // 2. 轉成數字
     let num = parseFloat(str);
-    
     if (isNaN(num)) return 0;
-
-    // 3. 判斷邏輯：
-    // 如果數值小於等於 1 且大於 0 (例如 0.4, 0.85, 1)，我們假設它是小數格式 -> 乘 100
-    // 如果數值大於 1 (例如 35, 100)，我們假設它是已經乘過的整數 -> 維持原樣
-    // 特例：0 就是 0
-    if (num <= 1 && num > 0) {
-        return Math.round(num * 100);
-    }
-    
+    if (num <= 1 && num > 0) return Math.round(num * 100);
     return Math.round(num);
 };
 
 const GanttStyles = () => (
     <style>{`
     .gantt-page-container {
-      display: flex;
-      flex-direction: column;
-      height: 100%; 
-      width: 100%;
-      position: relative;
+      display: flex; flex-direction: column; height: 100%; width: 100%; position: relative;
     }
     .gantt-controls {
-      padding-bottom: 15px;
-      margin-bottom: 15px;
-      border-bottom: 1px solid #e0e0e0;
-      flex-shrink: 0; 
+      padding-bottom: 15px; margin-bottom: 15px; border-bottom: 1px solid #e0e0e0; flex-shrink: 0; 
     }
-    .gantt-controls h2 {
-      font-size: 28px;
-      margin: 0;
-    }
+    .gantt-controls h2 { font-size: 28px; margin: 0; }
     .timeline-wrapper {
-      flex: 1;
-      overflow-y: auto; 
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      position: relative; 
+      flex: 1; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px; position: relative; 
     }
     .vis-timeline { border: none; padding-left: 0 !important; }
     .timeline-container.fade-in { opacity: 1; transition: opacity 0.8s ease-in; }
     .timeline-container { opacity: 0; height: 100%; }
 
-    /* 分析視窗樣式 */
+    /* 分析視窗 */
     .analysis-result-wrapper {
-      flex-shrink: 0; 
-      background: #f9f9f9;
-      border-top: 2px solid #e0e0e0;
-      padding: 20px;
-      margin-top: 20px;
-      border-radius: 4px;
-      position: relative; 
+      flex-shrink: 0; background: #f9f9f9; border-top: 2px solid #e0e0e0;
+      padding: 20px; margin-top: 20px; border-radius: 4px; position: relative; 
     }
-    .analysis-result-wrapper p {
-      white-space: pre-wrap;
-      font-size: 14px;
-      line-height: 1.6;
-    }
+    .analysis-result-wrapper p { white-space: pre-wrap; font-size: 14px; line-height: 1.6; }
     .analysis-close-btn {
-      position: absolute; top: 15px; right: 15px; 
-      background: none; border: none; font-size: 24px; cursor: pointer;
+      position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer;
     }
 
-    /* 按鈕樣式 */
+    /* 按鈕 */
     .action-btn {
         color: white; border: none; padding: 4px 8px; font-size: 12px;
-        border-radius: 4px; cursor: pointer; margin-left: 10px;
-        transition: background-color 0.2s;
+        border-radius: 4px; cursor: pointer; margin-left: 10px; transition: background-color 0.2s;
     }
     .analyze-btn { background: #61adffff; }
     .analyze-btn:hover { background: #0056b3; }
@@ -89,17 +51,14 @@ const GanttStyles = () => (
     .edit-btn { background: #888888; }
     .edit-btn:hover { background: #555555; }
 
-    /* 編輯 Modal 樣式 */
+    /* Modal */
     .modal-overlay {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0, 0, 0, 0.5);
-        display: flex; justify-content: center; align-items: center;
-        z-index: 1000;
+        background: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; z-index: 1000;
     }
     .modal-content {
         background: white; padding: 20px; border-radius: 8px;
-        width: 95%; max-width: 1400px; /* 加寬以容納多欄位 */
-        max-height: 90vh; overflow-y: auto;
+        width: 95%; max-width: 1400px; max-height: 90vh; overflow-y: auto;
         box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }
     .modal-header {
@@ -111,9 +70,9 @@ const GanttStyles = () => (
         border-top: 1px solid #eee; padding-top: 10px;
     }
     
-    /* 編輯表格樣式 */
-    .edit-table-wrapper { overflow-x: auto; } /* 讓表格可水平捲動 */
-    .edit-table { width: 100%; border-collapse: collapse; min-width: 1500px; /* 強制表格最小寬度 */ }
+    /* 表格 */
+    .edit-table-wrapper { overflow-x: auto; }
+    .edit-table { width: 100%; border-collapse: collapse; min-width: 1500px; }
     .edit-table th, .edit-table td {
         border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top;
     }
@@ -125,6 +84,12 @@ const GanttStyles = () => (
     }
     .edit-textarea { min-height: 60px; resize: vertical; }
     .read-only-text { background-color: #eee; color: #555; padding: 5px; border-radius: 3px; }
+    
+    /* 狀態標籤樣式 */
+    .status-tag { font-size: 10px; padding: 2px 4px; border-radius: 3px; margin-left: 5px; }
+    .status-new { background: #d4edda; color: #155724; } /* 綠色 */
+    .status-update { background: #fff3cd; color: #856404; } /* 黃色 */
+    .status-delete { background: #f8d7da; color: #721c24; } /* 紅色 (通常不會顯示因為被移除了) */
 
     .delete-row-btn { background: #ff4d4d; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
     .add-task-btn { background: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-top: 10px; }
@@ -141,27 +106,27 @@ function GanttChart() {
   const [libraryLoaded, setLibraryLoaded] = useState(false); 
   const [visible, setVisible] = useState(false);
   
-  // AI 分析相關
+  // AI 分析
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState("");
   const [analysisError, setAnalysisError] = useState("");
 
-  // 編輯相關
+  // 編輯相關 State
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingProjectName, setEditingProjectName] = useState("");
-  const [editingTasks, setEditingTasks] = useState([]); 
+  const [editingTasks, setEditingTasks] = useState([]); // 顯示在表格中的任務
+  const [deletedTasks, setDeletedTasks] = useState([]); // ✅ 暫存被刪除的任務 (為了告訴後端要刪除)
 
   const groupsRef = useRef(null);
   const timelineRef = useRef(null);
 
-  // 1. 載入 CDN
+  // 1. CDN 載入
   useEffect(() => {
     if (window.vis) { setLibraryLoaded(true); return; }
     const cssLink = document.createElement("link");
     cssLink.rel = "stylesheet";
     cssLink.href = "https://unpkg.com/vis-timeline@latest/styles/vis-timeline-graph2d.min.css";
     document.head.appendChild(cssLink);
-    
     const script = document.createElement("script");
     script.src = "https://unpkg.com/vis-timeline@latest/standalone/umd/vis-timeline-graph2d.min.js";
     script.onload = () => setLibraryLoaded(true);
@@ -184,47 +149,37 @@ function GanttChart() {
         setLoading(false);
       });
   };
-
   useEffect(() => { fetchTableData(); }, []);
 
-  // AI 分析相關函數 (省略重複註解)
+  // AI 分析函數
   const handleAnalysis = async (projectName) => {
     if (isAnalyzing) return; 
-    setIsAnalyzing(true);
-    setAnalysisResult(`分析中... (${projectName})`);
-    setAnalysisError(""); 
+    setIsAnalyzing(true); setAnalysisResult(`分析中... (${projectName})`); setAnalysisError(""); 
     try {
       const response = await fetch("https://wuca-n8n.zeabur.app/webhook/analysis", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ projectName: projectName }), 
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ projectName }), 
       });
       if (!response.ok) throw new Error(`Error: ${response.status}`);
       const data = await response.json();
-      if (data.analysis_text) setAnalysisResult(data.analysis_text);
-      else throw new Error("無 analysis_text");
-    } catch (err) {
-      setAnalysisError(`失敗: ${err.message}`);
-      setAnalysisResult(""); 
-    } finally { setIsAnalyzing(false); }
+      if (data.analysis_text) setAnalysisResult(data.analysis_text); else throw new Error("無 analysis_text");
+    } catch (err) { setAnalysisError(`失敗: ${err.message}`); setAnalysisResult(""); } 
+    finally { setIsAnalyzing(false); }
   };
   const closeAnalysisBox = () => { setIsAnalyzing(false); setAnalysisResult(""); setAnalysisError(""); };
 
-  // ✅ 編輯：點擊開啟
+  // ✅ 編輯：點擊開啟 (狀態初始化)
   const handleEditClick = (projectName) => {
     const projectTasks = rows.filter(r => r.專案名稱 === projectName);
     
-    // 深度拷貝並進行格式預處理
-    const formattedTasks = projectTasks.map(task => {
-        // 將進度轉為 "40%" 格式讓使用者編輯
-        const percentVal = normalizeProgress(task["進度百分比"]);
-        return {
-            ...task,
-            "進度百分比": `${percentVal}%` // 這裡轉成字串顯示
-        };
-    });
+    // 預處理資料：進度轉字串，並標記為 'update'
+    const formattedTasks = projectTasks.map(task => ({
+        ...task,
+        "進度百分比": normalizeProgress(task["進度百分比"]) + "%", 
+        _status: 'update' // ✅ 預設狀態：更新
+    }));
 
     setEditingTasks(JSON.parse(JSON.stringify(formattedTasks)));
+    setDeletedTasks([]); // ✅ 清空刪除清單
     setEditingProjectName(projectName);
     setShowEditModal(true);
   };
@@ -233,23 +188,34 @@ function GanttChart() {
   const handleTaskChange = (index, field, value) => {
     const newTasks = [...editingTasks];
     newTasks[index][field] = value;
+    // 如果狀態原本是 update，保持 update；如果是 create，保持 create
+    // (不用特別改狀態，因為只要沒被刪除，update 還是 update，create 還是 create)
     setEditingTasks(newTasks);
   };
 
-  // ✅ 編輯：刪除
+  // ✅ 編輯：刪除 (標記邏輯)
   const handleDeleteTask = (index) => {
-    if (window.confirm("確定刪除？")) {
-        const newTasks = [...editingTasks];
-        newTasks.splice(index, 1);
-        setEditingTasks(newTasks);
+    if (!window.confirm("確定刪除？")) return;
+
+    const taskToDelete = editingTasks[index];
+    
+    // 1. 如果這筆任務有 PID (代表是舊資料)，加入待刪除清單，標記為 'delete'
+    if (taskToDelete.PID && taskToDelete._status !== 'create') {
+        setDeletedTasks([...deletedTasks, { ...taskToDelete, _status: 'delete' }]);
     }
+    // 2. 如果是新資料 (create)，直接從畫面上移除就好，不用通知後端
+
+    // 從 UI 移除
+    const newTasks = [...editingTasks];
+    newTasks.splice(index, 1);
+    setEditingTasks(newTasks);
   };
 
-  // ✅ 編輯：新增
+  // ✅ 編輯：新增 (標記邏輯)
   const handleAddTask = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const newTask = {
-        "PID": "", // 新增的通常沒有 PID
+        "PID": Date.now(), // ✅ 暫時用 Timestamp 當 key，避免 React 渲染錯誤，後端不一定要存這個
         "專案ID": editingTasks.length > 0 ? editingTasks[0]["專案ID"] : "", 
         "專案名稱": editingProjectName,
         "任務名稱": "新任務",
@@ -263,22 +229,30 @@ function GanttChart() {
         "實際完成日期": "",
         "風險與問題": "",
         "下一步計劃": "",
-        "更新日期": todayStr
+        "更新日期": todayStr,
+        _status: 'create' // ✅ 標記狀態：新增
     };
     setEditingTasks([...editingTasks, newTask]);
   };
 
-  // ✅ 編輯：送出
+  // ✅ 編輯：送出 (打包所有狀態)
   const handleSubmitEdit = async () => {
     if (!confirm("確定儲存修改？")) return;
+
+    // 合併「編輯中(Update/Create)」與「已刪除(Delete)」的清單
+    const finalPayload = [
+        ...editingTasks,
+        ...deletedTasks
+    ];
+
     try {
-        const updateUrl = "https://wuca-n8n.zeabur.app/webhook/update_on_gantt"; 
+        const updateUrl = "https://wuca-n8n.zeabur.app/webhook/update-project"; 
         const response = await fetch(updateUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 projectName: editingProjectName,
-                tasks: editingTasks
+                tasks: finalPayload // ✅ 傳送包含 _status 的完整陣列
             })
         });
         if (response.ok) {
@@ -286,14 +260,14 @@ function GanttChart() {
             setShowEditModal(false);
             fetchTableData(); 
         } else {
-            alert("更新失敗");
+            alert("更新失敗，請檢查後台日誌。");
         }
     } catch (error) {
-        alert("連線錯誤");
+        alert("連線錯誤：" + error.message);
     }
   };
 
-  // 渲染圖表
+  // 渲染 Timeline
   useEffect(() => {
     if (!libraryLoaded || !rows.length || !ref.current) return;
 
@@ -318,42 +292,32 @@ function GanttChart() {
 
       const taskGroupIds = proj.tasks.map((_, i) => `${projKey}-taskgroup-${i}`);
 
-      // 建立按鈕 DOM
+      // DOM 建立
       const aiBtn = document.createElement('button');
       aiBtn.className = 'action-btn analyze-btn';
-      aiBtn.dataset.project = projKey; 
-      aiBtn.innerText = 'AI 分析';
+      aiBtn.dataset.project = projKey; aiBtn.innerText = 'AI 分析';
 
       const editBtn = document.createElement('button');
       editBtn.className = 'action-btn edit-btn';
-      editBtn.dataset.project = projKey;
-      editBtn.innerText = '編輯專案';
+      editBtn.dataset.project = projKey; editBtn.innerText = '編輯專案';
 
       const textElement = document.createElement('span');
-      textElement.style.fontWeight = 'bold';
-      textElement.innerText = projKey;
+      textElement.style.fontWeight = 'bold'; textElement.innerText = projKey;
 
       const btnContainer = document.createElement('div');
-      btnContainer.appendChild(aiBtn);
-      btnContainer.appendChild(editBtn);
+      btnContainer.appendChild(aiBtn); btnContainer.appendChild(editBtn);
 
       const groupElement = document.createElement('div');
-      groupElement.style.display = 'flex';
-      groupElement.style.justifyContent = 'space-between';
-      groupElement.style.alignItems = 'center';
-      groupElement.style.paddingRight = '10px';
-      groupElement.appendChild(textElement);
-      groupElement.appendChild(btnContainer);
+      groupElement.style.display = 'flex'; groupElement.style.justifyContent = 'space-between';
+      groupElement.style.alignItems = 'center'; groupElement.style.paddingRight = '10px';
+      groupElement.appendChild(textElement); groupElement.appendChild(btnContainer);
 
       groups.add({
         id: projKey, content: groupElement, nestedGroups: taskGroupIds, showNested: false, 
       });
 
-      // ✅ 畫圖時的進度轉換 (總進度)
-      const totalProgress = proj.tasks.reduce((sum, t) => {
-          return sum + normalizeProgress(t["進度百分比"]);
-      }, 0) / proj.tasks.length;
-
+      // 總進度
+      const totalProgress = proj.tasks.reduce((sum, t) => sum + normalizeProgress(t["進度百分比"]), 0) / proj.tasks.length;
       const minStart = new Date(Math.min(...proj.tasks.map((t) => new Date(t["開始日期"]))));
       const maxEnd = new Date(Math.max(...proj.tasks.map((t) => new Date(t["預計完成日期"]))));
       const totalPercent = Math.round(totalProgress);
@@ -365,12 +329,10 @@ function GanttChart() {
         style: `background: linear-gradient(to right, rgba(200,198,198,0.9) ${totalPercent}%, rgba(200,198,198,0.4) ${totalPercent}%); border:1px solid #666; font-size:14px; font-weight:bold; width: 0 !important;`,
       });
 
-      // ✅ 畫圖時的進度轉換 (個別任務)
+      // 個別任務
       proj.tasks.forEach((task, idx) => {
         const start = new Date(task["開始日期"]);
         const end = new Date(task["預計完成日期"]);
-        
-        // 使用 normalizeProgress 處理 0.4 或 1 的問題
         const progressPercent = normalizeProgress(task["進度百分比"]);
 
         let gradientStyle;
@@ -428,9 +390,7 @@ function GanttChart() {
   const toggleGroups = (expand) => {
     if (!groupsRef.current || !timelineRef.current) return;
     const allGroups = groupsRef.current.get();
-    for (const g of allGroups) {
-        if (g.nestedGroups) groupsRef.current.update({ id: g.id, showNested: expand });
-    }
+    for (const g of allGroups) if (g.nestedGroups) groupsRef.current.update({ id: g.id, showNested: expand });
     timelineRef.current.setGroups(groupsRef.current);
   };
   
@@ -458,7 +418,7 @@ function GanttChart() {
           </div>
         )}
 
-        {/* ✅ 全欄位編輯 Modal */}
+        {/* 編輯 Modal */}
         {showEditModal && (
             <div className="modal-overlay">
                 <div className="modal-content">
@@ -472,10 +432,12 @@ function GanttChart() {
                             <thead>
                                 <tr>
                                     <th style={{width:'50px'}}>操作</th>
+                                    <th style={{width:'80px'}}>狀態</th>
+                                    <th style={{width:'100px'}}>PID</th>
                                     <th style={{width:'100px'}}>專案ID</th>
                                     <th style={{width:'150px'}}>任務名稱</th>
                                     <th style={{width:'80px'}}>進度</th>
-                                    <th style={{width:'100px'}}>狀態</th>
+                                    <th style={{width:'100px'}}>任務狀態</th>
                                     <th style={{width:'100px'}}>成員</th>
                                     <th style={{width:'100px'}}>部門</th>
                                     <th style={{width:'130px'}}>開始日期</th>
@@ -492,7 +454,14 @@ function GanttChart() {
                                     <tr key={idx}>
                                         <td><button className="delete-row-btn" onClick={() => handleDeleteTask(idx)}>刪</button></td>
                                         
+                                        {/* 顯示當前這筆資料的狀態 (新增或修改) */}
+                                        <td>
+                                            {task._status === 'create' && <span className="status-tag status-new">New</span>}
+                                            {task._status === 'update' && <span className="status-tag status-update">Edit</span>}
+                                        </td>
+
                                         {/* 唯讀欄位 */}
+                                        <td><div className="read-only-text">{task.PID}</div></td>
                                         <td><div className="read-only-text">{task.專案ID}</div></td>
 
                                         {/* 可編輯欄位 */}
