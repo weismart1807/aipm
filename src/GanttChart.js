@@ -272,7 +272,7 @@ function GanttChart() {
   const handleSubmitEdit = async () => {
     if (!confirm("確定儲存修改？")) return;
     try {
-        const updateUrl = "https://wuca-n8n.zeabur.app/webhook/update-project"; 
+        const updateUrl = "https://wuca-n8n.zeabur.app/webhook/update_on_gantt"; 
         const response = await fetch(updateUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
