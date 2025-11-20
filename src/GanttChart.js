@@ -1,16 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
-// import { DataSet, Timeline } from "vis-timeline/standalone"; // Removed - Will be loaded from CDN
-// import "vis-timeline/styles/vis-timeline-graph2d.min.css"; // Removed - Will be loaded from CDN
-// import "./index.css"; // Removed - Styles are self-contained
+// import { DataSet, Timeline } from "vis-timeline/standalone"; 
+// import "vis-timeline/styles/vis-timeline-graph2d.min.css"; 
+// import "./index.css"; 
 
-// ... (GanttStyles 樣式元件 ... existing code ... )
 const GanttStyles = () => (
     <style>{`
     .gantt-page-container {
       display: flex;
       flex-direction: column;
-      height: 100%; /* 填滿父層 (.content) 的高度 */
+      height: 100%; 
       width: 100%;
+      position: relative; /* 為了 Modal 定位 */
     }
     .gantt-controls {
       padding-bottom: 15px;
@@ -43,54 +43,31 @@ const GanttStyles = () => (
         height: 100%; 
     }
 
-    /* ✅ 新增：AI 分析結果的樣式 */
+    /* AI 分析結果樣式 (維持原樣) */
     .analysis-result-wrapper {
-      flex-shrink: 0; /* 固定高度，不被壓縮 */
+      flex-shrink: 0; 
       background: #f9f9f9;
       border-top: 2px solid #e0e0e0;
       padding: 20px;
       margin-top: 20px;
       border-radius: 4px;
-      position: relative; /* 為了定位關閉按鈕 */
+      position: relative; 
     }
     .analysis-result-wrapper h3 {
       margin-top: 0;
       font-size: 20px;
       color: #333;
     }
-    /* 讓 LLM 的換行 (\n) 生效 */
     .analysis-result-wrapper p {
       white-space: pre-wrap;
       font-size: 14px;
       line-height: 1.6;
       color: #222;
     }
-
-    /* ✅ 新增：分析按鈕的樣式 */
-    .analyze-btn {
-        background: #61adffff;
-        color: white;
-        border: none;
-        padding: 4px 8px;
-        font-size: 12px;
-        border-radius: 4px;
-        cursor: pointer;
-        margin-left: 10px;
-        transition: background-color 0.2s;
-    }
-    .analyze-btn:hover {
-        background: #0056b3;
-    }
-    .analyze-btn:disabled {
-        background: #c0c0c0;
-        cursor: not-allowed;
-    }
-
-    /* ✅ 新增：關閉按鈕的樣式 */
     .analysis-close-btn {
       position: absolute;
-      top: 15px; /* 調整位置 */
-      right: 15px; /* 調整位置 */
+      top: 15px; 
+      right: 15px; 
       background: none;
       border: none;
       font-size: 24px;
@@ -103,57 +80,184 @@ const GanttStyles = () => (
     .analysis-close-btn:hover {
       color: #333;
     }
+
+    /* 按鈕共用樣式 */
+    .action-btn {
+        color: white;
+        border: none;
+        padding: 4px 8px;
+        font-size: 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-left: 10px;
+        transition: background-color 0.2s;
+    }
+
+    /* ✅ 修改：原本的分析按鈕樣式 */
+    .analyze-btn {
+        background: #61adffff;
+    }
+    .analyze-btn:hover {
+        background: #0056b3;
+    }
+    .analyze-btn:disabled {
+        background: #c0c0c0;
+        cursor: not-allowed;
+    }
+
+    /* ✅ 新增：灰色編輯按鈕樣式 */
+    .edit-btn {
+        background: #888888; /* 灰色 */
+    }
+    .edit-btn:hover {
+        background: #555555;
+    }
+
+    /* ✅ 新增：編輯 Modal 樣式 */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    }
+    .modal-content {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        width: 80%;
+        max-width: 900px;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 10px;
+    }
+    .modal-footer {
+        margin-top: 20px;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        border-top: 1px solid #eee;
+        padding-top: 10px;
+    }
+    
+    /* 表格樣式 */
+    .edit-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .edit-table th, .edit-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+    }
+    .edit-table th {
+        background-color: #f2f2f2;
+    }
+    .edit-input {
+        width: 100%;
+        padding: 5px;
+        box-sizing: border-box;
+    }
+    .delete-row-btn {
+        background: #ff4d4d;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .add-task-btn {
+        background: #28a745;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+    .submit-btn {
+        background: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+    .cancel-btn {
+        background: #6c757d;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+    }
     `}</style>
 );
 
 
 function GanttChart() {
   const ref = useRef(null);
-  // ... (useState definitions ... existing code ... )
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [libraryLoaded, setLibraryLoaded] = useState(false); 
   const [visible, setVisible] = useState(false);
+  
+  // AI 分析相關 State
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState("");
   const [analysisError, setAnalysisError] = useState("");
 
+  // ✅ 新增：編輯功能相關 State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingProjectName, setEditingProjectName] = useState("");
+  const [editingTasks, setEditingTasks] = useState([]); // 存放目前正在編輯的任務列表
+
   const groupsRef = useRef(null);
   const timelineRef = useRef(null);
 
-  // ... (useEffect for CDN loading ... existing code ... )
+  // 1. 載入 CDN (維持原樣)
   useEffect(() => {
     if (window.vis) {
       setLibraryLoaded(true);
       return;
     }
-
-    // 載入 CSS
     const cssLink = document.createElement("link");
     cssLink.rel = "stylesheet";
     cssLink.href = "https://unpkg.com/vis-timeline@latest/styles/vis-timeline-graph2d.min.css";
     document.head.appendChild(cssLink);
     
-    // 載入 JS
     const script = document.createElement("script");
     script.src = "https://unpkg.com/vis-timeline@latest/standalone/umd/vis-timeline-graph2d.min.js";
-    script.onload = () => {
-      setLibraryLoaded(true);
-    };
+    script.onload = () => setLibraryLoaded(true);
     script.onerror = () => {
         console.error("無法載入 vis-timeline 函式庫");
         setLoading(false);
     }
     document.body.appendChild(script);
-
     return () => {
         document.head.removeChild(cssLink);
         document.body.removeChild(script);
     }
   }, []);
 
-  // ... (useEffect for data fetching ... existing code ... )
-  useEffect(() => {
+  // 2. 讀取資料 API (抽離成函數以便 reload)
+  const fetchTableData = () => {
+    setLoading(true);
     fetch("https://wuca-n8n.zeabur.app/webhook/table")
       .then((res) => res.json())
       .then((data) => {
@@ -164,74 +268,133 @@ function GanttChart() {
         console.error("讀取錯誤", err);
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchTableData();
   }, []);
 
-  // ... (handleAnalysis function ... existing code ... )
+  // AI 分析功能 (維持原樣)
   const handleAnalysis = async (projectName) => {
-    if (isAnalyzing) return; // 防止重複點擊
-
-    console.log("開始分析專案:", projectName);
+    if (isAnalyzing) return; 
     setIsAnalyzing(true);
     setAnalysisResult(`分析中，請稍候... (正在分析: ${projectName})`);
-    setAnalysisError(""); // 清除上次的錯誤
-
+    setAnalysisError(""); 
     try {
-      // ⚠️ 注意：請在 n8n 建立一個新的 Webhook，並將 URL 替換成你的
       const response = await fetch("https://wuca-n8n.zeabur.app/webhook/analysis", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ projectName: projectName }), // 將專案名稱傳送給 n8n
+          body: JSON.stringify({ projectName: projectName }), 
       });
-
-      if (!response.ok) {
-        throw new Error(`伺服器錯誤: ${response.status}`);
-      }
-
+      if (!response.ok) throw new Error(`伺服器錯誤: ${response.status}`);
       const data = await response.json();
-
-      // 假設 n8n 回傳的 JSON 結構為 { "analysis_text": "..." }
       if (data.analysis_text) {
         setAnalysisResult(data.analysis_text);
       } else {
-        throw new Error("回傳資料格式錯誤，找不到 analysis_text 欄位");
+        throw new Error("回傳資料格式錯誤");
       }
-
     } catch (err) {
-      console.error("分析失敗:", err);
       setAnalysisError(`分析失敗: ${err.message}`);
-      setAnalysisResult(""); // 清除分析中訊息
+      setAnalysisResult(""); 
     } finally {
-      setIsAnalyzing(false); // 解除鎖定
+      setIsAnalyzing(false); 
     }
   };
-
-  // ✅ 新增：關閉分析視窗的函數
   const closeAnalysisBox = () => {
     setIsAnalyzing(false);
     setAnalysisResult("");
     setAnalysisError("");
   };
 
+  // ✅ 新增：處理點擊「編輯」按鈕
+  const handleEditClick = (projectName) => {
+    // 1. 找出屬於該專案的所有任務
+    const projectTasks = rows.filter(r => r.專案名稱 === projectName);
+    
+    // 2. 深拷貝一份資料到 State，避免直接修改 rows 影響顯示
+    setEditingTasks(JSON.parse(JSON.stringify(projectTasks)));
+    setEditingProjectName(projectName);
+    setShowEditModal(true);
+  };
+
+  // ✅ 新增：處理表單欄位變更
+  const handleTaskChange = (index, field, value) => {
+    const newTasks = [...editingTasks];
+    newTasks[index][field] = value;
+    setEditingTasks(newTasks);
+  };
+
+  // ✅ 新增：處理刪除任務
+  const handleDeleteTask = (index) => {
+    if (window.confirm("確定要刪除此任務嗎？")) {
+        const newTasks = [...editingTasks];
+        newTasks.splice(index, 1);
+        setEditingTasks(newTasks);
+    }
+  };
+
+  // ✅ 新增：處理新增任務
+  const handleAddTask = () => {
+    const newTask = {
+        "專案ID": editingTasks.length > 0 ? editingTasks[0]["專案ID"] : "", // 沿用專案ID
+        "專案名稱": editingProjectName,
+        "任務名稱": "新任務",
+        "任務狀態": "進行中",
+        "進度百分比": "0%",
+        "開始日期": new Date().toISOString().split('T')[0],
+        "預計完成日期": new Date().toISOString().split('T')[0],
+        "部門": editingTasks.length > 0 ? editingTasks[0]["部門"] : "",
+        "成員姓名": ""
+    };
+    setEditingTasks([...editingTasks, newTask]);
+  };
+
+  // ✅ 新增：提交編輯 (Submit)
+  const handleSubmitEdit = async () => {
+    if (!confirm("確定要更新專案資料嗎？")) return;
+
+    try {
+        // 這裡假設你的 n8n 有一個用來更新資料的 webhook
+        // 你需要將此 URL 替換成你實際處理 "Update" 的 Webhook URL
+        const updateUrl = "https://wuca-n8n.zeabur.app/webhook/update-project"; 
+
+        const response = await fetch(updateUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                projectName: editingProjectName,
+                tasks: editingTasks // 傳送修改後的完整任務列表
+            })
+        });
+
+        if (response.ok) {
+            alert("更新成功！");
+            setShowEditModal(false);
+            fetchTableData(); // 重新讀取後台資料以更新畫面
+        } else {
+            alert("更新失敗，請檢查後台。");
+        }
+    } catch (error) {
+        console.error("Update error:", error);
+        alert("連線錯誤");
+    }
+  };
+
+
+  // 渲染 Vis-timeline
   useEffect(() => {
     if (!libraryLoaded || !rows.length || !ref.current) return;
 
-    // ... (vis library loading ... existing code ... )
     const { DataSet, Timeline } = window.vis;
     const groups = new DataSet();
     const items = new DataSet();
     const projects = {};
     const today = new Date();
 
-    // ... (validRows filtering ... existing code ... )
     const validRows = rows.filter(row => 
-      row.專案ID && 
-      row.專案名稱 && 
-      row.任務名稱 &&
-      row['開始日期'] && 
-      row['預計完成日期']
+      row.專案ID && row.專案名稱 && row.任務名稱 && row['開始日期'] && row['預計完成日期']
     );
 
-    // ... (data grouping by '專案名稱' ... existing code ... )
     validRows.forEach((row) => {
       const groupKey = row.專案名稱; 
       if (!projects[groupKey]) {
@@ -241,27 +404,33 @@ function GanttChart() {
     });
 
     Object.entries(projects).forEach(([projKey, proj]) => {
-      // ... (empty project check ... existing code ... )
-      if (proj.tasks.length === 0) {
-        return; 
-      }
+      if (proj.tasks.length === 0) return; 
 
       const taskGroupIds = proj.tasks.map((_, i) => `${projKey}-taskgroup-${i}`);
 
-      // ✅【修改 1】: 建立按鈕的 DOM 元素
-      const buttonElement = document.createElement('button');
-      buttonElement.className = 'analyze-btn';
-      // ✅【修改 2】: 使用 dataset 傳遞專案名稱，不需要編碼
-      buttonElement.dataset.project = projKey; 
-      buttonElement.innerText = 'AI 分析';
+      // 建立 "AI 分析" 按鈕
+      const aiBtn = document.createElement('button');
+      aiBtn.className = 'action-btn analyze-btn';
+      aiBtn.dataset.project = projKey; 
+      aiBtn.innerText = 'AI 分析';
 
-      // 建立群組標題的 DOM 元素
-      const textElement = document.createElement('div');
-      textElement.style.textAlign = 'left';
+      // ✅【修改】建立 "編輯" 灰色按鈕
+      const editBtn = document.createElement('button');
+      editBtn.className = 'action-btn edit-btn';
+      editBtn.dataset.project = projKey;
+      editBtn.innerText = '編輯專案';
+
+      // 標題
+      const textElement = document.createElement('span');
       textElement.style.fontWeight = 'bold';
       textElement.innerText = projKey;
 
-      // 建立最外層的容器 (用 Flex)
+      // 按鈕容器
+      const btnContainer = document.createElement('div');
+      btnContainer.appendChild(aiBtn);
+      btnContainer.appendChild(editBtn); // 加入編輯按鈕
+
+      // 群組容器
       const groupElement = document.createElement('div');
       groupElement.style.display = 'flex';
       groupElement.style.justifyContent = 'space-between';
@@ -269,28 +438,26 @@ function GanttChart() {
       groupElement.style.paddingRight = '10px';
       
       groupElement.appendChild(textElement);
-      groupElement.appendChild(buttonElement);
+      groupElement.appendChild(btnContainer);
 
-
-      // ✅【修改 3】: 父專案 group，content 直接傳入 DOM 元素
       groups.add({
         id: projKey, 
-        content: groupElement, // ⬅️ 關鍵修改！
+        content: groupElement, 
         nestedGroups: taskGroupIds,
         showNested: false, 
       });
 
-      // ... (總進度 ... 程式碼無變動)
-      const totalProgress =
-        proj.tasks.reduce((sum, t) => sum + Number(t["進度百分比"] || 0), 0) /
-        proj.tasks.length;
-      const minStart = new Date(
-        Math.min(...proj.tasks.map((t) => new Date(t["開始日期"])))
-      );
-      const maxEnd = new Date(
-        Math.max(...proj.tasks.map((t) => new Date(t["預計完成日期"])))
-      );
-      const totalPercent = Math.round(totalProgress * 100);
+      // 計算進度 (維持原樣)
+      const totalProgress = proj.tasks.reduce((sum, t) => {
+          // 處理 "50%" 字串轉數字
+          let val = t["進度百分比"];
+          if (typeof val === 'string') val = parseFloat(val.replace('%', ''));
+          return sum + (Number(val) || 0);
+      }, 0) / proj.tasks.length;
+
+      const minStart = new Date(Math.min(...proj.tasks.map((t) => new Date(t["開始日期"]))));
+      const maxEnd = new Date(Math.max(...proj.tasks.map((t) => new Date(t["預計完成日期"]))));
+      const totalPercent = Math.round(totalProgress); // 這裡假設 input 是 0-100
 
       items.add({
         id: `${projKey}-summary`, 
@@ -300,50 +467,26 @@ function GanttChart() {
         end: maxEnd,
         type: "range",
         style: `
-          background: linear-gradient(
-            to right,
-            rgba(200,198,198,0.9) ${totalPercent}%,
-            rgba(200,198,198,0.4) ${totalPercent}%
-          );
-          border:1px solid #666;
-          font-size:14px;
-          font-weight:bold;
-          width: 0 !important;
+          background: linear-gradient(to right, rgba(200,198,198,0.9) ${totalPercent}%, rgba(200,198,198,0.4) ${totalPercent}%);
+          border:1px solid #666; font-size:14px; font-weight:bold; width: 0 !important;
         `,
       });
 
-      // ... (子任務 ... 程式碼無變動)
+      // 子任務 (維持原樣)
       proj.tasks.forEach((task, idx) => {
         const start = new Date(task["開始日期"]);
         const end = new Date(task["預計完成日期"]);
-        const actualProgress = Number(task["進度百分比"] || 0);
-        const progressPercent = Math.round(actualProgress * 100);
+        let pVal = task["進度百分比"];
+        if (typeof pVal === 'string') pVal = parseFloat(pVal.replace('%', ''));
+        const progressPercent = Math.round(Number(pVal) || 0);
 
         let gradientStyle;
         if (progressPercent === 100) {
-          gradientStyle = `
-            background: linear-gradient(
-              to right,
-              rgba(0,200,0,0.7) ${progressPercent}%,
-              rgba(144,238,144,0.3) ${progressPercent}%
-            );
-          `;
+            gradientStyle = `background: linear-gradient(to right, rgba(0,200,0,0.7) ${progressPercent}%, rgba(144,238,144,0.3) ${progressPercent}%);`;
         } else if (end < today && progressPercent < 100) {
-          gradientStyle = `
-            background: linear-gradient(
-              to right,
-              rgba(255,99,71,0.6) ${progressPercent}%,
-              rgba(255,182,193,0.2) ${progressPercent}%
-            );
-          `;
+            gradientStyle = `background: linear-gradient(to right, rgba(255,99,71,0.6) ${progressPercent}%, rgba(255,182,193,0.2) ${progressPercent}%);`;
         } else {
-          gradientStyle = `
-            background: linear-gradient(
-              to right,
-              rgba(91,170,255,0.6) ${progressPercent}%,
-              rgba(0,123,255,0.15) ${progressPercent}%
-            );
-          `;
+            gradientStyle = `background: linear-gradient(to right, rgba(91,170,255,0.6) ${progressPercent}%, rgba(0,123,255,0.15) ${progressPercent}%);`;
         }
 
         groups.add({
@@ -364,7 +507,6 @@ function GanttChart() {
       });
     });
 
-    // ... (options 和 timeline 建立 ... 程式碼無變動)
     const options = {
       stack: true,
       showCurrentTime: true,
@@ -379,49 +521,44 @@ function GanttChart() {
     timelineRef.current = timeline;
     groupsRef.current = groups;
 
-    // ✅【修改 4】: 事件委派監聽器
+    // ✅【修改】: 事件監聽器，處理 AI 分析與編輯按鈕
     const onTimelineClick = (event) => {
         const target = event.target;
-        // 檢查是否點擊到 'analyze-btn'
+        const projectName = target.dataset.project;
+
+        // 1. AI 分析按鈕
         if (target.classList.contains('analyze-btn')) {
-            // 禁用按鈕防止重複點擊
             target.disabled = true;
             target.innerText = "分析中...";
-
-            // ✅【修改 5】: 直接從 dataset 讀取，不需解碼
-            const projectName = target.dataset.project;
             if (projectName) {
                 handleAnalysis(projectName).finally(() => {
-                    // 分析完成後，無論成功失敗都恢復按鈕
                     target.disabled = false;
                     target.innerText = "AI 分析";
                 });
             }
         }
+        
+        // 2. ✅ 編輯按鈕
+        if (target.classList.contains('edit-btn')) {
+            if (projectName) {
+                handleEditClick(projectName);
+            }
+        }
     };
 
-    // 將監聽器綁定在 timeline 的根元素上
     const timelineContainer = ref.current;
     timelineContainer.addEventListener('click', onTimelineClick);
 
-
     setTimeout(() => setVisible(true), 50);
     
-    // ✅ 清理監聽器
     return () => {
-      if (timeline) {
-        timeline.destroy();
-      }
-      if (timelineContainer) {
-        timelineContainer.removeEventListener('click', onTimelineClick);
-      }
+      if (timeline) timeline.destroy();
+      if (timelineContainer) timelineContainer.removeEventListener('click', onTimelineClick);
     };
-  }, [rows, libraryLoaded]); // 移除了 isAnalyzing
+  }, [rows, libraryLoaded]); 
 
-  // ... (toggleGroups function ... 程式碼無變動 ... )
   const toggleGroups = (expand) => {
     if (!groupsRef.current || !timelineRef.current) return;
-
     const allGroups = groupsRef.current.get();
     for (const g of allGroups) {
         if (g.nestedGroups) {
@@ -431,55 +568,123 @@ function GanttChart() {
     timelineRef.current.setGroups(groupsRef.current);
   };
   
-  // ... (loading state ... 程式碼無變動 ... )
   if (loading || !libraryLoaded) return <p>載入甘特圖資源中...</p>;
 
-  // ... (return JSX ... 程式碼無變動 ... )
   return (
     <>
       <GanttStyles />
       <div className="gantt-page-container">
-        <div 
-            className="gantt-controls" 
-            style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '20px' 
-            }}
-        >
+        <div className="gantt-controls" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px'}}>
             <h2>專案甘特圖</h2>
-            <button onClick={() => toggleGroups(false)}>
-                全部收合
-            </button>
+            <button onClick={() => toggleGroups(false)}>全部收合</button>
         </div>
         <div className="timeline-wrapper">
-            <div
-                ref={ref}
-                className={`timeline-container ${visible ? "fade-in" : ""}`}
-            />
+            <div ref={ref} className={`timeline-container ${visible ? "fade-in" : ""}`} />
         </div>
 
-        {/* ✅【修改 4】: 新增的分析結果顯示區域 */}
         {(isAnalyzing || analysisResult || analysisError) && (
           <div className="analysis-result-wrapper">
-            {/* ✅ 新增：關閉按鈕 */}
-            <button className="analysis-close-btn" onClick={closeAnalysisBox}>
-              &times;
-            </button>
-
+            <button className="analysis-close-btn" onClick={closeAnalysisBox}>&times;</button>
             <h3>專案 AI 分析</h3>
-            
-            {isAnalyzing && <p>分析中，請稍候... (AI 正在讀取並總結專案數據)</p>}
-            
-            {/* 顯示 LLM 回傳的分析結果 (字體已在 CSS 縮小) */}
+            {isAnalyzing && <p>分析中，請稍候...</p>}
             {analysisResult && <p>{analysisResult}</p>}
-
-            {/* 顯示錯誤訊息 */}
             {analysisError && <p style={{ color: 'red' }}>{analysisError}</p>}
           </div>
         )}
 
+        {/* ✅ 新增：編輯彈窗 (Modal) */}
+        {showEditModal && (
+            <div className="modal-overlay">
+                <div className="modal-content">
+                    <div className="modal-header">
+                        <h3>編輯專案：{editingProjectName}</h3>
+                        <button onClick={() => setShowEditModal(false)} className="analysis-close-btn">&times;</button>
+                    </div>
+                    
+                    <div style={{ overflowX: 'auto' }}>
+                        <table className="edit-table">
+                            <thead>
+                                <tr>
+                                    <th style={{width: '150px'}}>任務名稱</th>
+                                    <th style={{width: '80px'}}>成員</th>
+                                    <th style={{width: '130px'}}>開始日期</th>
+                                    <th style={{width: '130px'}}>結束日期</th>
+                                    <th style={{width: '70px'}}>進度</th>
+                                    <th style={{width: '90px'}}>狀態</th>
+                                    <th style={{width: '50px'}}>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {editingTasks.map((task, idx) => (
+                                    <tr key={idx}>
+                                        <td>
+                                            <input 
+                                                className="edit-input" 
+                                                value={task.任務名稱 || ""} 
+                                                onChange={(e) => handleTaskChange(idx, "任務名稱", e.target.value)}
+                                            />
+                                        </td>
+                                        <td>
+                                            <input 
+                                                className="edit-input" 
+                                                value={task.成員姓名 || ""} 
+                                                onChange={(e) => handleTaskChange(idx, "成員姓名", e.target.value)}
+                                            />
+                                        </td>
+                                        <td>
+                                            <input 
+                                                type="date"
+                                                className="edit-input" 
+                                                value={task.開始日期 || ""} 
+                                                onChange={(e) => handleTaskChange(idx, "開始日期", e.target.value)}
+                                            />
+                                        </td>
+                                        <td>
+                                            <input 
+                                                type="date"
+                                                className="edit-input" 
+                                                value={task.預計完成日期 || ""} 
+                                                onChange={(e) => handleTaskChange(idx, "預計完成日期", e.target.value)}
+                                            />
+                                        </td>
+                                        <td>
+                                            <input 
+                                                className="edit-input" 
+                                                placeholder="50%"
+                                                value={task.進度百分比 || ""} 
+                                                onChange={(e) => handleTaskChange(idx, "進度百分比", e.target.value)}
+                                            />
+                                        </td>
+                                        <td>
+                                            <select 
+                                                className="edit-input"
+                                                value={task.任務狀態 || "進行中"}
+                                                onChange={(e) => handleTaskChange(idx, "任務狀態", e.target.value)}
+                                            >
+                                                <option value="未開始">未開始</option>
+                                                <option value="進行中">進行中</option>
+                                                <option value="延遲">延遲</option>
+                                                <option value="完成">完成</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <button className="delete-row-btn" onClick={() => handleDeleteTask(idx)}>刪除</button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <button className="add-task-btn" onClick={handleAddTask}>+ 新增任務</button>
+
+                    <div className="modal-footer">
+                        <button className="cancel-btn" onClick={() => setShowEditModal(false)}>取消</button>
+                        <button className="submit-btn" onClick={handleSubmitEdit}>Submit (儲存)</button>
+                    </div>
+                </div>
+            </div>
+        )}
       </div>
     </>
   );
