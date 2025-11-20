@@ -246,7 +246,7 @@ function GanttChart() {
     ];
 
     try {
-        const updateUrl = "https://wuca-n8n.zeabur.app/webhook/update-project"; 
+        const updateUrl = "https://wuca-n8n.zeabur.app/webhook-test/update_on_gantt"; 
         const response = await fetch(updateUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
