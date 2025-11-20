@@ -1,19 +1,19 @@
 import React, { useState, useEffect, useRef } from "react";
 
-// 將 CSS 樣式直接整合到元件中，並根據您的需求進行美化
+// 將 CSS 樣式直接整合到元件中
 const ChatStyles = () => (
     <style>{`
-/* ChatBox 專區 - 移除獨立樣式，使其能融入父層容器 */
+/* ChatBox 專區 */
 .chatbox {
   display: flex;
   flex-direction: column;
-  width: 100%;  /* 寬度設為 100% */
-  height: 100%; /* 高度設為 100% 以填滿 .content 區域 */
-  overflow: hidden; /* 避免多出滾動條 */
-  background-color: #fff; /* 保留背景色 */
+  width: 100%;  
+  height: 100%; 
+  overflow: hidden; 
+  background-color: #fff; 
 }
 
-/* 對話紀錄區域（滾動） */
+/* 對話紀錄區域 */
 .messages {
   flex: 1;
   overflow-y: auto;
@@ -21,24 +21,24 @@ const ChatStyles = () => (
   background: #ffffff;
   display: flex;
   flex-direction: column;
-  gap: 15px; /* 訊息間的間距 */
-  border: 1px solid #ddd; /* 參考您提供的 messages 樣式 */
+  gap: 15px; 
+  border: 1px solid #ddd; 
   border-radius: 4px;
   margin-bottom: 10px;
 }
 
-/* 訊息容器 (用於對齊) */
+/* 訊息容器 */
 .message-container {
     display: flex;
     width: 100%;
 }
 
 .my-message {
-    justify-content: flex-end; /* 「我」的訊息靠右 */
+    justify-content: flex-end; 
 }
 
 .other-message {
-    justify-content: flex-start; /* 其他訊息靠左 */
+    justify-content: flex-start; 
 }
 
 /* 訊息泡泡 */
@@ -47,8 +47,8 @@ const ChatStyles = () => (
     padding: 10px 15px;
     border-radius: 18px;
     line-height: 1.5;
-    word-wrap: break-word; /* 自動換行 */
-    white-space: pre-wrap; /* 保留換行符號 */
+    word-wrap: break-word; 
+    white-space: pre-wrap; 
 }
 
 .my-message .message-bubble {
@@ -121,15 +121,15 @@ const ChatStyles = () => (
     background-color: #0056b3;
 }
 
-/* ✅ 新增：載入中 Spinner */
+/* 載入中 Spinner */
 .spinner {
   width: 18px;
   height: 18px;
-  border: 3px solid rgba(150, 150, 150, 0.2); /* 淺灰色底 */
-  border-top-color: #888; /* 轉動的顏色 (灰色) */
+  border: 3px solid rgba(150, 150, 150, 0.2); 
+  border-top-color: #888; 
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
-  margin-right: 10px; /* 跟文字有點間距 */
+  margin-right: 10px; 
 }
 
 @keyframes spin {
@@ -137,11 +137,11 @@ const ChatStyles = () => (
   100% { transform: rotate(360deg); }
 }
 
-/* ✅ 新增：讓 spinner 和文字水平排列 */
+/* 讓 spinner 和文字水平排列 */
 .loading-bubble {
     display: flex;
     align-items: center;
-    color: #555; /* 讓「思考中」的文字也是灰色 */
+    color: #555; 
 }
     `}</style>
 );
@@ -154,10 +154,9 @@ function ChatBox() {
     const messagesEndRef = useRef(null);
     const textareaRef = useRef(null);
     const [sessionId, setSessionId] = useState('');
-    
-    // ✅ 1. 新增載入狀態
     const [isLoading, setIsLoading] = useState(false);
 
+    // 初始化 Session ID 與取得專案摘要
     useEffect(() => {
         const newSessionId = crypto.randomUUID();
         setSessionId(newSessionId);
@@ -183,32 +182,41 @@ function ChatBox() {
 
     const sendMessage = async () => {       
         const trimmedInput = input.trim();
-        if (!trimmedInput || isLoading) return; // ✅ 如果正在載入中，禁止重複發送
+        if (!trimmedInput || isLoading) return; 
 
         console.log("正在發送的 Session ID:", sessionId);
 
+        // 1. 先更新 UI 顯示使用者訊息
         setMessages(prevMessages => [...prevMessages, { sender: "我", text: trimmedInput }]);
         setInput("");
-        
-        // ✅ 2. 開始載入
         setIsLoading(true);
+
+        // ✅ 2. 準備歷史紀錄 (History Context)
+        // 取最後 6 則訊息，避免 Token 過多
+        // 將前端的 sender 格式轉換為後端/LLM 看得懂的 role 格式
+        const historyPayload = messages.slice(-6).map(msg => ({
+            role: msg.sender === "我" ? "user" : "assistant",
+            content: msg.text
+        }));
 
         try {
             const response = await fetch("https://wuca-n8n.zeabur.app/webhook/chatbot", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: trimmedInput, sessionId: sessionId }),
+                body: JSON.stringify({ 
+                    message: trimmedInput, 
+                    sessionId: sessionId,
+                    chatHistory: historyPayload // ✅ 將整理好的歷史紀錄傳給後端
+                }),
             });
             const data = await response.json();
             
-            // ✅ 3. 停止載入
             setIsLoading(false);
             setMessages(prevMessages => [
                 ...prevMessages,
                 { sender: "PM 助手", text: data.output || "你的小幫手沒有聽清楚，可以在問一次嗎🤩" },
             ]);
         } catch (err) {
-            // ✅ 3. 停止載入 (即使是錯誤)
             setIsLoading(false);
             setMessages(prevMessages => [
                 ...prevMessages,
@@ -226,7 +234,7 @@ function ChatBox() {
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages, isLoading]); // ✅ 當 isLoading 變化時也滾動
+    }, [messages, isLoading]); 
     
     useEffect(() => {
         const textarea = textareaRef.current;
@@ -250,7 +258,6 @@ function ChatBox() {
                         </div>
                     ))}
                     
-                    {/* ✅ 4. 顯示載入中動畫 */}
                     {isLoading && (
                         <div className="message-container other-message">
                             <div className="message-bubble">
@@ -275,7 +282,7 @@ function ChatBox() {
                         onCompositionEnd={() => setIsComposing(false)}
                         placeholder="輸入詢問專案細節，或新增、編輯、刪除專案任務 (Shift+Enter 換行)..."
                         rows="1"
-                        disabled={isLoading} // ✅ (可選) 載入中禁止輸入
+                        disabled={isLoading} 
                     />
                     <button onClick={sendMessage} disabled={isLoading}>
                         {isLoading ? "..." : "送出"} 
