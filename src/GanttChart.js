@@ -87,14 +87,45 @@ const GanttStyles = () => (
     
     /* 狀態標籤樣式 */
     .status-tag { font-size: 10px; padding: 2px 4px; border-radius: 3px; margin-left: 5px; }
-    .status-new { background: #d4edda; color: #155724; } /* 綠色 */
-    .status-update { background: #fff3cd; color: #856404; } /* 黃色 */
-    .status-delete { background: #f8d7da; color: #721c24; } /* 紅色 (通常不會顯示因為被移除了) */
+    .status-new { background: #d4edda; color: #155724; } 
+    .status-update { background: #fff3cd; color: #856404; } 
+    .status-delete { background: #f8d7da; color: #721c24; } 
 
     .delete-row-btn { background: #ff4d4d; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
     .add-task-btn { background: #28a745; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; margin-top: 10px; }
     .submit-btn { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; }
     .cancel-btn { background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+
+    /* ✅ 新增：全局 Loading 遮罩樣式 */
+    .global-loading-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0, 0, 0, 0.5); /* 灰色半透明背景 */
+        z-index: 2000; /* 必須比 Modal (1000) 還高 */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        color: white;
+        font-size: 18px;
+        font-weight: bold;
+    }
+
+    /* ✅ 新增：藍色轉圈圈動畫 */
+    .spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid #f3f3f3; /* 淺灰底色 */
+        border-top: 5px solid #3498db; /* 藍色轉動部分 */
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin-bottom: 15px;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
     `}</style>
 );
 
@@ -114,8 +145,11 @@ function GanttChart() {
   // 編輯相關 State
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingProjectName, setEditingProjectName] = useState("");
-  const [editingTasks, setEditingTasks] = useState([]); // 顯示在表格中的任務
-  const [deletedTasks, setDeletedTasks] = useState([]); // ✅ 暫存被刪除的任務 (為了告訴後端要刪除)
+  const [editingTasks, setEditingTasks] = useState([]); 
+  const [deletedTasks, setDeletedTasks] = useState([]); 
+
+  // ✅ 新增：提交中的 Loading 狀態
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const groupsRef = useRef(null);
   const timelineRef = useRef(null);
@@ -167,55 +201,45 @@ function GanttChart() {
   };
   const closeAnalysisBox = () => { setIsAnalyzing(false); setAnalysisResult(""); setAnalysisError(""); };
 
-  // ✅ 編輯：點擊開啟 (狀態初始化)
+  // 編輯：點擊開啟
   const handleEditClick = (projectName) => {
     const projectTasks = rows.filter(r => r.專案名稱 === projectName);
-    
-    // 預處理資料：進度轉字串，並標記為 'update'
     const formattedTasks = projectTasks.map(task => ({
         ...task,
         "進度百分比": normalizeProgress(task["進度百分比"]) + "%", 
-        _status: 'update' // ✅ 預設狀態：更新
+        _status: 'update'
     }));
 
     setEditingTasks(JSON.parse(JSON.stringify(formattedTasks)));
-    setDeletedTasks([]); // ✅ 清空刪除清單
+    setDeletedTasks([]); 
     setEditingProjectName(projectName);
     setShowEditModal(true);
   };
 
-  // ✅ 編輯：欄位變更
+  // 編輯：欄位變更
   const handleTaskChange = (index, field, value) => {
     const newTasks = [...editingTasks];
     newTasks[index][field] = value;
-    // 如果狀態原本是 update，保持 update；如果是 create，保持 create
-    // (不用特別改狀態，因為只要沒被刪除，update 還是 update，create 還是 create)
     setEditingTasks(newTasks);
   };
 
-  // ✅ 編輯：刪除 (標記邏輯)
+  // 編輯：刪除
   const handleDeleteTask = (index) => {
     if (!window.confirm("確定刪除？")) return;
-
     const taskToDelete = editingTasks[index];
-    
-    // 1. 如果這筆任務有 PID (代表是舊資料)，加入待刪除清單，標記為 'delete'
     if (taskToDelete.PID && taskToDelete._status !== 'create') {
         setDeletedTasks([...deletedTasks, { ...taskToDelete, _status: 'delete' }]);
     }
-    // 2. 如果是新資料 (create)，直接從畫面上移除就好，不用通知後端
-
-    // 從 UI 移除
     const newTasks = [...editingTasks];
     newTasks.splice(index, 1);
     setEditingTasks(newTasks);
   };
 
-  // ✅ 編輯：新增 (標記邏輯)
+  // 編輯：新增
   const handleAddTask = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const newTask = {
-        "PID": Date.now(), // ✅ 暫時用 Timestamp 當 key，避免 React 渲染錯誤，後端不一定要存這個
+        "PID": Date.now(),
         "專案ID": editingTasks.length > 0 ? editingTasks[0]["專案ID"] : "", 
         "專案名稱": editingProjectName,
         "任務名稱": "新任務",
@@ -230,40 +254,46 @@ function GanttChart() {
         "風險與問題": "",
         "下一步計劃": "",
         "更新日期": todayStr,
-        _status: 'create' // ✅ 標記狀態：新增
+        _status: 'create'
     };
     setEditingTasks([...editingTasks, newTask]);
   };
 
-  // ✅ 編輯：送出 (打包所有狀態)
+  // ✅ 編輯：送出 (加入 Loading 邏輯)
   const handleSubmitEdit = async () => {
     if (!confirm("確定儲存修改？")) return;
 
-    // 合併「編輯中(Update/Create)」與「已刪除(Delete)」的清單
+    // 1. 開啟 Loading 遮罩
+    setIsSubmitting(true);
+
     const finalPayload = [
         ...editingTasks,
         ...deletedTasks
     ];
 
     try {
-        const updateUrl = "https://wuca-n8n.zeabur.app/webhook-test/update_on_gantt"; 
+        const updateUrl = "https://wuca-n8n.zeabur.app/webhook/update_on_gantt"; 
         const response = await fetch(updateUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 projectName: editingProjectName,
-                tasks: finalPayload // ✅ 傳送包含 _status 的完整陣列
+                tasks: finalPayload 
             })
         });
+        
         if (response.ok) {
             alert("更新成功！");
             setShowEditModal(false);
-            fetchTableData(); 
+            fetchTableData(); // 重新讀取資料
         } else {
             alert("更新失敗，請檢查後台日誌。");
         }
     } catch (error) {
         alert("連線錯誤：" + error.message);
+    } finally {
+        // ✅ 無論成功失敗，最後都要關閉 Loading 遮罩
+        setIsSubmitting(false);
     }
   };
 
@@ -292,7 +322,6 @@ function GanttChart() {
 
       const taskGroupIds = proj.tasks.map((_, i) => `${projKey}-taskgroup-${i}`);
 
-      // DOM 建立
       const aiBtn = document.createElement('button');
       aiBtn.className = 'action-btn analyze-btn';
       aiBtn.dataset.project = projKey; aiBtn.innerText = 'AI 分析';
@@ -316,7 +345,6 @@ function GanttChart() {
         id: projKey, content: groupElement, nestedGroups: taskGroupIds, showNested: false, 
       });
 
-      // 總進度
       const totalProgress = proj.tasks.reduce((sum, t) => sum + normalizeProgress(t["進度百分比"]), 0) / proj.tasks.length;
       const minStart = new Date(Math.min(...proj.tasks.map((t) => new Date(t["開始日期"]))));
       const maxEnd = new Date(Math.max(...proj.tasks.map((t) => new Date(t["預計完成日期"]))));
@@ -329,7 +357,6 @@ function GanttChart() {
         style: `background: linear-gradient(to right, rgba(200,198,198,0.9) ${totalPercent}%, rgba(200,198,198,0.4) ${totalPercent}%); border:1px solid #666; font-size:14px; font-weight:bold; width: 0 !important;`,
       });
 
-      // 個別任務
       proj.tasks.forEach((task, idx) => {
         const start = new Date(task["開始日期"]);
         const end = new Date(task["預計完成日期"]);
@@ -501,6 +528,15 @@ function GanttChart() {
                 </div>
             </div>
         )}
+
+        {/* ✅ 全局 Loading 遮罩：當提交資料時顯示 */}
+        {isSubmitting && (
+            <div className="global-loading-overlay">
+                <div className="spinner"></div>
+                <p>資料儲存中，請稍候...</p>
+            </div>
+        )}
+
       </div>
     </>
   );
