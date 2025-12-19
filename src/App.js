@@ -4,7 +4,7 @@ import ChatBox from "./ChatBox";
 import "./index.css";
 import ProjectTable from "./ProjectTable";
 import GanttChart from "./GanttChart";
-import Neo4jGraph from "./Neo4jGraph"
+import Neo4jGraph from "./ConnectGraph"
 function App() {
   const [page, setPage] = useState("chat");
 
