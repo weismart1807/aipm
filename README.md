@@ -1,143 +1,92 @@
-# AIPM-frontend
+# AIPM-frontend ✨
 
-AI 專案管理助手（Frontend）
+**AI 專案管理助手（Frontend）**
 
-簡短說明：這是一個 React 前端介面，用來與 n8n 流程（webhook / forms）整合，提供：
-- AI 聊天助手（PM 助手）
-- 專案總表 (table)
-- 甘特圖 (Gantt)
-- 專案關係圖 (Neo4j)
-- 新增 / 編輯 / 刪除 專案表單（透過 n8n form iframe）
+一個以 React 建置的簡易前端介面，用來展示並管理專案任務，同時與 n8n 工作流程整合（webhook & embedded forms）。
 
 ---
 
-## 開發與執行 🔧
+## 快速開始 🔧
 
-- 安裝：
+1. 安裝相依套件：
 
-  ```bash
-  npm install
-  ```
+```bash
+npm install
+```
 
-- 開發伺服器：
+2. 本機開發：
 
-  ```bash
-  npm start
-  ```
+```bash
+npm start
+```
 
-- 建置生產檔案：
+3. 建置 (production)：
 
-  ```bash
-  npm run build
-  ```
-
----
-
-## 檔案說明 📁
-
-主要檔案（位於 `src/`）：
-
-- `App.js`  
-  應用程式入口，控制頁面切換與嵌入 n8n 表單（新增/編輯/刪除）iframe。
-
-- `Sidebar.js`  
-  側邊選單，提供導航按鈕（AI 對話、專案總表、甘特圖、關係圖、表單等）。
-
-- `ChatBox.js`  
-  AI 對話元件，會：
-  - 向 `/webhook/ab` 取得專案摘要（顯示為第一條摘要訊息）
-  - 向 `/webhook/chatbot` 發送使用者訊息與歷史紀錄，顯示助手回覆
-  - 支援 Enter 送出、Shift+Enter 換行與輸入輸入框自動伸縮
-
-- `ProjectTable.js`  
-  顯示專案總表，透過 `/webhook/table` 取得資料並以可水平捲動的表格呈現。
-
-- `GanttChart.js`  
-  使用 vis-timeline 呈現甘特圖（動態載入 CDN），功能包括：
-  - 從 `/webhook/table` 讀取任務資料
-  - 點選「分析」時呼叫 `/webhook/analysis` 取得 AI 分析結果
-  - 編輯任務後以 `/webhook/update_on_gantt` 提交變更（payload 含 tasks 與 _status）
-  - 編輯介面含新增/刪除/更新狀態並支援 Loading/確認提示
-
-- `Neo4jGraph.js`  
-  顯示專案關係圖（依專案需求實作，可能需要後端或資料端點）。
-
-- `index.js` / `index.css`  
-  React 進入點與全域樣式。
-
-- `build/`, `public/`  
-  建置輸出與靜態資源（已含在 git 或部署後的產出資料夾）。
+```bash
+npm run build
+```
 
 ---
 
-## n8n Webhook / Form 設定（目前使用的 URL） 🔗
+## 檔案一覽 📁
 
-> 這些 URL 來自程式碼檔案；如要換成自己的 n8n，請到對應檔案修改 URL。
-
-- GET `/webhook/ab`  (ChatBox.js)
-  - 目的：取回「專案摘要」用來顯示在聊天視窗上方
-  - 範例回應： `{ "output": "專案摘要文字..." }`
-  - 程式位置：`src/ChatBox.js`
-
-- POST `/webhook/chatbot`  (ChatBox.js)
-  - 目的：發送使用者訊息，包含 `sessionId` 與 `chatHistory`，由後端串接 LLM 或邏輯回覆
-  - 範例請求 JSON body：
-    ```json
-    {
-      "message": "請幫我檢查任務A",
-      "sessionId": "<uuid>",
-      "chatHistory": [{ "role": "user", "content": "先前訊息" }, { "role": "assistant", "content": "回覆內容" }]
-    }
-    ```
-  - 範例回應： `{ "output": "助手回覆文字..." }`
-  - 程式位置：`src/ChatBox.js`
-
-- GET `/webhook/table`  (ProjectTable.js, GanttChart.js)
-  - 目的：提供專案 / 任務資料列陣供表格與甘特圖使用
-  - 回傳格式：Array of objects（每行包含 `專案名稱`, `任務名稱`, `開始日期`, `預計完成日期` 等欄位）
-  - 程式位置：`src/ProjectTable.js`, `src/GanttChart.js`
-
-- POST `/webhook/analysis`  (GanttChart.js)
-  - 目的：向 AI 或後端服務請求專案分析（輸入 `projectName`）
-  - 範例請求： `{ "projectName": "專案 A" }`
-  - 範例回應： `{ "analysis_text": "分析結果文字..." }`
-  - 程式位置：`src/GanttChart.js`
-
-- POST `/webhook/update_on_gantt`  (GanttChart.js)
-  - 目的：提交在甘特圖編輯過的任務變更。
-  - 範例請求 body：
-    ```json
-    {
-      "projectName": "專案 A",
-      "tasks": [
-        { "PID": 123, "任務名稱": "任務 1", "進度百分比": "50%", "_status": "update" },
-        { "PID": 456, "任務名稱": "任務 2", "進度百分比": "0%", "_status": "create" },
-        { "PID": 789, "任務名稱": "任務 3", "_status": "delete" }
-      ]
-    }
-    ```
-  - 程式位置：`src/GanttChart.js`
-
-- n8n Forms（被嵌入 `iframe`，由 `App.js` 控制）
-  - 新增表單： `https://wuca-n8n.zeabur.app/form/c9285050-d74b-49b9-b8b5-5d979d0e749d`
-  - 編輯表單： `https://wuca-n8n.zeabur.app/form/2d84c57a-921d-4102-80b5-b966c1f82292`
-  - 刪除表單： `https://wuca-n8n.zeabur.app/form/eecfa4f0-bbcc-4f4e-bd67-657c9cbbb20e`
-  - 程式位置：`src/App.js`
+| 檔案 | 說明 | 備註 |
+|---|---:|---|
+| `src/App.js` | 應用入口；頁面切換、嵌入表單 (iframe) | 表單 URL 為可替換的環境設定 |
+| `src/Sidebar.js` | 側邊選單與導航按鈕 | - |
+| `src/ChatBox.js` | AI 對話元件（初始化會顯示專案摘要、發送訊息給 chatbot webhook） | 支援 sessionId 與 chatHistory |
+| `src/ProjectTable.js` | 顯示專案總表（可水平捲動） | 從 table webhook 讀取資料 |
+| `src/GanttChart.js` | 甘特圖與任務編輯、AI 分析按鈕、更新提交 | 動態載入 vis-timeline CDN |
+| `src/Connect_Graph.js` | 專案關係圖（視實作） | 視資料來源而定 |
+| `src/index.js` / `src/index.css` | React 進入點與全域樣式 | - |
 
 ---
 
-## 常見修改點 / 注意事項 💡
+## n8n Webhook 與表單（占位說明）🔗
 
-- 若要替換為你自己的 n8n，修改上面提到的 URL（檔案位置已標注）。
-- `ChatBox` 在初始化時會自動產生 `sessionId`（使用 `crypto.randomUUID()`）並傳到 `chatbot` webhook，後端可用來關聯對話。
-- 編輯甘特圖後送到 `/webhook/update_on_gantt`，payload 中的 `_status` 請在 n8n workflow 中處理為建立/更新/刪除邏輯。
-- `GanttChart` 會動態載入 `vis-timeline` 的 CSS/Script（CDN），請確保部署環境能存取外部 CDN。
+重要：**本檔案已移除專案中真實的 n8n 網址與表單連結**。請在部署或測試時將下列佔位符替換為你自己的 n8n Base URL（例如 `https://your-n8n.example` 或 `https://<YOUR_N8N_HOST>`）。
+
+| 路徑 (相對) | 方法 | 目的 | 被呼叫於 |
+|---|---:|---|---|
+| `/webhook/ab` | GET | 取得「專案摘要」，顯示為聊天第一則訊息 | `src/ChatBox.js` |
+| `/webhook/chatbot` | POST | 傳送使用者訊息，payload 包含 `message`, `sessionId`, `chatHistory` | `src/ChatBox.js` |
+| `/webhook/table` | GET | 回傳專案任務陣列，用於表格與甘特圖 | `src/ProjectTable.js`, `src/GanttChart.js` |
+| `/webhook/analysis` | POST | 請求 AI 分析（輸入 `projectName`）並回傳 `analysis_text` | `src/GanttChart.js` |
+| `/webhook/update_on_gantt` | POST | 提交甘特圖編輯後的任務變更（包含 `_status` 欄位） | `src/GanttChart.js` |
+
+範例：在程式中請使用下列格式（以 env 或設定檔替代真實網址）：
+
+```js
+const N8N_BASE = process.env.REACT_APP_N8N_BASE_URL || 'https://<YOUR_N8N_BASE>'
+fetch(`${N8N_BASE}/webhook/table`)
+```
 
 ---
 
-## 聯絡 / 貢獻 🙏
+## 嵌入表單（iframe）
 
-- 若需要新增功能或修正 webhook 格式，請開 PR 或直接修改相對應的檔案並更新 README 中的說明。
+App 使用 iframe 嵌入 n8n 的表單（例如：新增 / 編輯 / 刪除 專案表單）。請替換為你自己的表單網址：
+
+```
+https://<YOUR_N8N_BASE>/form/<YOUR_FORM_ID>
+```
+
+建議：將表單 URL 儲存在環境變數中（例如 `.env`），避免把敏感的專用 URL 直接推到版本控制。
+
+---
+
+## 注意事項 & 建議 💡
+
+- 不要在公開 repo 中保留真實 webhook 或表單 URL；使用環境變數或設定檔替代。
+- `ChatBox` 會自動產生 `sessionId`（`crypto.randomUUID()`），後端可以利用此 ID 綁定對話會話。 
+- `/webhook/update_on_gantt` 的 payload `tasks` 內部請包含 `_status`（`create`/`update`/`delete`）以供後端處理。
+- `GanttChart` 動態載入 `vis-timeline`，請確保執行環境能存取 CDN（或改為自行打包依賴）。
+
+---
+
+## 想要更多？
+
+- 想要我幫你把專案中的所有實際 URL 換成 env 變數並更新程式碼範例嗎？ (✅ 我可以直接幫你改)
 
 ---
 
