@@ -34,7 +34,7 @@ function Neo4jGraph() {
   const [modalContent, setModalContent] = useState(null);
 
   useEffect(() => {
-    fetch("https://wuca-n8n.zeabur.app/webhook/table")
+    fetch("https://<your-n8n-url>/webhook/table") // ← 修改為 n8n 資料 URL
       .then((res) => res.json())
       .then((data) => setRows(data))
       .catch((err) => console.error("讀取錯誤", err));

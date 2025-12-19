@@ -163,7 +163,7 @@ function ChatBox() {
 
         const fetchSummary = async () => {
             try {
-                const response = await fetch("https://wuca-n8n.zeabur.app/webhook/ab", {
+                const response = await fetch("https://<your-n8n-url>/webhook/ab", {  // ← 修改為 n8n 專案摘要 URL
                     method: "GET",
                 });
                 const data = await response.json();
@@ -203,7 +203,7 @@ function ChatBox() {
             }));
 
         try {
-            const response = await fetch("https://wuca-n8n.zeabur.app/webhook/chatbot", {
+            const response = await fetch("https://<your-n8n-url>/webhook/chatbot", { // ← 修改為 n8n 聊天機器人 URL
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
