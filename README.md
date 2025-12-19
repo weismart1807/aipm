@@ -82,11 +82,6 @@ https://<YOUR_N8N_BASE>/form/<YOUR_FORM_ID>
 - `/webhook/update_on_gantt` 的 payload `tasks` 內部請包含 `_status`（`create`/`update`/`delete`）以供後端處理。
 - `GanttChart` 動態載入 `vis-timeline`，請確保執行環境能存取 CDN（或改為自行打包依賴）。
 
----
-
-## 想要更多？
-
-- 想要我幫你把專案中的所有實際 URL 換成 env 變數並更新程式碼範例嗎？ (✅ 我可以直接幫你改)
 
 ---
 
