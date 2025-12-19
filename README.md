@@ -65,7 +65,7 @@ fetch(`${N8N_BASE}/webhook/table`)
 
 ## 嵌入表單（iframe）
 
-`App.js` 使用 iframe 嵌入 n8n 的表單（例如：新增 / 編輯 / 刪除 專案表單）。請替換為你自己的表單網址：
+`App` 使用 iframe 嵌入 n8n 的表單（例如：新增 / 編輯 / 刪除 專案表單）。請替換為你自己的表單網址：
 
 ```
 https://<YOUR_N8N_BASE>/form/<YOUR_FORM_ID>

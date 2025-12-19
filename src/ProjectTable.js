@@ -33,7 +33,7 @@ function ProjectTable() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("https://<your-n8n-url>/webhook/table") // 替換成你的 production Webhook URL
+    fetch("https://wuca-n8n.zeabur.app/webhook/table") // 替換成你的 production Webhook URL
       .then((res) => res.json())
       .then((data) => {
         setRows(data)

@@ -172,7 +172,7 @@ function GanttChart() {
   // 2. 讀取資料
   const fetchTableData = () => {
     setLoading(true);
-    fetch("https://<your-n8n-url>/webhook/table") // ← 修改為 n8n 甘特圖資料 URL
+    fetch("https://wuca-n8n.zeabur.app/webhook/table")
       .then((res) => res.json())
       .then((data) => {
         setRows(data);
@@ -190,7 +190,7 @@ function GanttChart() {
     if (isAnalyzing) return; 
     setIsAnalyzing(true); setAnalysisResult(`分析中... (${projectName})`); setAnalysisError(""); 
     try {
-      const response = await fetch("https://<your-n8n-url>/webhook/analysis", {  // ← 修改為 n8n AI 分析 URL
+      const response = await fetch("https://wuca-n8n.zeabur.app/webhook/analysis", {
           method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ projectName }), 
       });
       if (!response.ok) throw new Error(`Error: ${response.status}`);
@@ -272,7 +272,7 @@ function GanttChart() {
     ];
 
     try {
-        const updateUrl = "https://<your-n8n-url>/webhook/update_on_gantt";  // ← 修改為 n8n 更新專案 URL
+        const updateUrl = "https://wuca-n8n.zeabur.app/webhook/update_on_gantt"; 
         const response = await fetch(updateUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
